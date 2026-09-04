@@ -7,18 +7,51 @@ export async function openPaytmCheckout(
   onSuccess,
   onFailure
 ) {
-  if (!payment?.txnToken || !payment?.mid) {
+  if (
+    !payment?.txnToken ||
+    !payment?.mid
+  ) {
     throw new Error(
       "Invalid Paytm payment session."
     );
   }
 
+  /*
+   * Backend already returns correct
+   * Paytm host/environment.
+   */
   const host =
     payment.host ||
-    (payment.environment === "production"
-      ? "https://securegw.paytm.in"
-      : "https://securegw-stage.paytm.in");
+    (
+      payment.environment ===
+      "production"
+        ? "https://securegw.paytm.in"
+        : "https://securegw-stage.paytm.in"
+    );
 
+  console.log(
+    "[Paytm payment session]",
+    {
+      mid:
+        payment.mid,
+
+      orderId:
+        payment.orderId,
+
+      amount:
+        payment.amountFormatted ||
+        payment.amount,
+
+      environment:
+        payment.environment,
+
+      host,
+    }
+  );
+
+  /*
+   * Load Paytm official CheckoutJS
+   */
   await loadPaytmScript(
     host,
     payment.mid
@@ -26,28 +59,38 @@ export async function openPaytmCheckout(
 
   return new Promise(
     (resolve, reject) => {
-      let finished = false;
+      let settled = false;
 
-      const fail = async (error) => {
-        if (finished) {
-          return;
-        }
-
-        finished = true;
-
-        try {
-          if (onFailure) {
-            await onFailure(error);
+      const fail =
+        async (error) => {
+          if (settled) {
+            return;
           }
-        } catch (callbackError) {
-          console.error(
-            "Paytm failure callback error:",
-            callbackError
-          );
-        }
 
-        reject(error);
-      };
+          settled = true;
+
+          console.error(
+            "[Paytm payment failure]",
+            error
+          );
+
+          try {
+            if (onFailure) {
+              await onFailure(
+                error
+              );
+            }
+          } catch (
+            callbackError
+          ) {
+            console.error(
+              "[Paytm failure callback]",
+              callbackError
+            );
+          }
+
+          reject(error);
+        };
 
       const config = {
         root: "",
@@ -66,7 +109,9 @@ export async function openPaytmCheckout(
 
           amount:
             payment.amountFormatted ||
-            String(payment.amount),
+            String(
+              payment.amount
+            ),
         },
 
         handler: {
@@ -74,40 +119,44 @@ export async function openPaytmCheckout(
             eventName,
             data
           ) {
+            console.log(
+              "[Paytm event]",
+              eventName,
+              data
+            );
+
             if (
               eventName ===
-              "APP_CLOSED"
+                "APP_CLOSED" &&
+              !settled
             ) {
               fail(
                 new Error(
                   "Payment window closed."
                 )
               );
-
-              return;
             }
-
-            console.log(
-              "Paytm event:",
-              eventName,
-              data
-            );
           },
 
           async transactionStatus(
             data
           ) {
-            if (finished) {
+            if (settled) {
               return;
             }
 
-            const gatewaySuccess =
+            console.log(
+              "[Paytm transaction status]",
+              data
+            );
+
+            const success =
               data?.STATUS ===
                 "TXN_SUCCESS" ||
               data?.status ===
                 "SUCCESS";
 
-            if (!gatewaySuccess) {
+            if (!success) {
               await fail(
                 new Error(
                   data?.RESPMSG ||
@@ -118,20 +167,21 @@ export async function openPaytmCheckout(
               return;
             }
 
-            /*
-             * IMPORTANT:
-             * Browser success alone is NOT enough.
-             *
-             * onSuccess() internally calls
-             * backend /payment/verify.
-             */
-
             try {
+              /*
+               * Browser success alone
+               * is NOT final success.
+               *
+               * onSuccess internally
+               * calls backend verification.
+               */
               if (onSuccess) {
-                await onSuccess(data);
+                await onSuccess(
+                  data
+                );
               }
 
-              finished = true;
+              settled = true;
 
               resolve(data);
             } catch (error) {
@@ -141,98 +191,127 @@ export async function openPaytmCheckout(
         },
       };
 
-      if (!window.Paytm?.CheckoutJS) {
+      const checkout =
+        window.Paytm?.CheckoutJS;
+
+      if (!checkout) {
         fail(
           new Error(
-            "Paytm checkout script failed to load."
+            "Paytm CheckoutJS not loaded."
           )
         );
 
         return;
       }
 
-      window.Paytm.CheckoutJS
-        .init(config)
-        .then(() =>
-          window.Paytm.CheckoutJS.invoke()
-        )
-        .catch((error) => {
-          fail(error);
-        });
+      /*
+       * Paytm CheckoutJS should be
+       * initialized after onLoad.
+       */
+      const initialize =
+        () => {
+          checkout
+            .init(config)
+            .then(() => {
+              console.log(
+                "[Paytm] invoking checkout"
+              );
+
+              return checkout.invoke();
+            })
+            .catch((error) => {
+              fail(error);
+            });
+        };
+
+      if (
+        typeof checkout.onLoad ===
+        "function"
+      ) {
+        checkout.onLoad(
+          initialize
+        );
+      } else {
+        /*
+         * fallback for CheckoutJS
+         * builds where onLoad
+         * isn't exposed
+         */
+        initialize();
+      }
     }
   );
 }
-// export async function openPaytmCheckout(payment, onSuccess, onFailure) {
-//   if (!payment?.txnToken || !payment?.mid) {
-//     throw new Error("Invalid Paytm payment session.");
-//   }
 
-//   const host =
-//     payment.host ||
-//     (payment.environment === "production"
-//       ? "https://securegw.paytm.in"
-//       : "https://securegw-stage.paytm.in");
+export async function payOrderWithPaytm(
+  orderId,
+  callbacks = {}
+) {
+  const payment =
+    await initiateOrderPayment(
+      orderId
+    );
 
-//   await loadPaytmScript(host, payment.mid);
+  console.log(
+    "Paytm session:",
+    {
+      orderId,
+      paytmOrderId:
+        payment?.orderId,
+      amount:
+        payment?.amount,
+    }
+  );
 
-//   return new Promise((resolve, reject) => {
-//     const config = {
-//       root: "",
-//       flow: "DEFAULT",
-//       data: {
-//         orderId: payment.orderId,
-//         token: payment.txnToken,
-//         tokenType: "TXN_TOKEN",
-//         amount: payment.amountFormatted || String(payment.amount),
-//       },
-//       handler: {
-//         notifyMerchant(eventName) {
-//           if (eventName === "APP_CLOSED") {
-//             const error = new Error("Payment window closed.");
-//             onFailure?.(error);
-//             reject(error);
-//           }
-//         },
-//         transactionStatus(data) {
-//           if (data?.STATUS === "TXN_SUCCESS" || data?.status === "SUCCESS") {
-//             onSuccess?.(data);
-//             resolve(data);
-//             return;
-//           }
+  return openPaytmCheckout(
+    payment,
 
-//           const error = new Error(
-//             data?.RESPMSG || "Payment was not completed."
-//           );
-//           onFailure?.(error);
-//           reject(error);
-//         },
-//       },
-//     };
+    async (gatewayData) => {
+      console.log(
+        "Paytm browser success:",
+        gatewayData
+      );
 
-//     if (!window.Paytm?.CheckoutJS) {
-//       const error = new Error("Paytm checkout script failed to load.");
-//       reject(error);
-//       return;
-//     }
+      /*
+       * Browser success alone is
+       * NOT enough.
+       *
+       * Verify with our backend.
+       */
+      const verified =
+        await verifyOrderPayment(
+          orderId,
+          payment.orderId
+        );
 
-//     window.Paytm.CheckoutJS.init(config)
-//       .then(() => window.Paytm.CheckoutJS.invoke())
-//       .catch((error) => {
-//         onFailure?.(error);
-//         reject(error);
-//       });
-//   });
-// }
+      console.log(
+        "Backend verified payment:",
+        verified
+      );
 
-// export async function payOrderWithPaytm(orderId, callbacks = {}) {
-//   const payment = await initiateOrderPayment(orderId);
+      if (!verified?.success) {
+        throw new Error(
+          verified?.message ||
+          "Payment could not be verified."
+        );
+      }
 
-//   return openPaytmCheckout(
-//     payment,
-//     callbacks.onSuccess,
-//     callbacks.onFailure
-//   );
-// }
+      if (
+        callbacks.onSuccess
+      ) {
+        await callbacks.onSuccess(
+          verified,
+          gatewayData
+        );
+      }
+
+      return verified;
+    },
+
+    callbacks.onFailure
+  );
+}
+
 // export async function payOrderWithPaytm(
 //   orderId,
 //   callbacks = {}
@@ -246,126 +325,199 @@ export async function openPaytmCheckout(
 //     payment,
 
 //     async (gatewayData) => {
-//       try {
-//         const verified =
-//           await verifyOrderPayment(
-//             orderId,
-//             payment.orderId
-//           );
+//       const verified =
+//         await verifyOrderPayment(
+//           orderId,
+//           payment.orderId
+//         );
 
-//         if (!verified?.success) {
-//           throw new Error(
-//             'Payment could not be verified.'
-//           );
-//         }
+//       if (!verified?.success) {
+//         throw new Error(
+//           "Payment could not be verified."
+//         );
+//       }
 
-//         if (
-//           callbacks.onSuccess
-//         ) {
-//           await callbacks.onSuccess(
-//             verified,
-//             gatewayData
-//           );
-//         }
-//       } catch (error) {
-//         if (
-//           callbacks.onFailure
-//         ) {
-//           callbacks.onFailure(
-//             error
-//           );
-//         }
-
-//         throw error;
+//       if (callbacks.onSuccess) {
+//         await callbacks.onSuccess(
+//           verified,
+//           gatewayData
+//         );
 //       }
 //     },
 
 //     callbacks.onFailure
 //   );
 // }
-export async function payOrderWithPaytm(
-  orderId,
-  callbacks = {}
+
+
+function loadPaytmScript(
+  host,
+  mid
 ) {
-  const payment =
-    await initiateOrderPayment(
-      orderId
-    );
-
-  return openPaytmCheckout(
-    payment,
-
-    async (gatewayData) => {
-      const verified =
-        await verifyOrderPayment(
-          orderId,
-          payment.orderId
-        );
-
-      if (!verified?.success) {
-        throw new Error(
-          "Payment could not be verified."
-        );
-      }
-
-      if (callbacks.onSuccess) {
-        await callbacks.onSuccess(
-          verified,
-          gatewayData
-        );
-      }
-    },
-
-    callbacks.onFailure
-  );
-}
-
-
-
-function loadPaytmScript(host, mid) {
-  const merchantId = String(mid || "").trim();
+  const merchantId =
+    String(mid || "").trim();
 
   if (!merchantId) {
-    return Promise.reject(new Error("Paytm merchant ID is missing."));
+    return Promise.reject(
+      new Error(
+        "Paytm merchant ID is missing."
+      )
+    );
   }
 
-  const src = `${host}/merchantpgpui/checkoutjs/merchants/${encodeURIComponent(
-    merchantId
-  )}/checkout.js`;
+  const cleanHost =
+    String(host || "")
+      .replace(/\/$/, "");
 
-  const existing = document.querySelector(
-    `script[data-paytm-checkout="${merchantId}"]`
+  /*
+   * IMPORTANT:
+   *
+   * Production:
+   * https://securegw.paytm.in/
+   * merchantpgpui/checkoutjs/merchants/MID.js
+   *
+   * Staging:
+   * https://securegw-stage.paytm.in/
+   * merchantpgpui/checkoutjs/merchants/MID.js
+   */
+  const src =
+    `${cleanHost}` +
+    `/merchantpgpui/checkoutjs/merchants/` +
+    `${encodeURIComponent(merchantId)}.js`;
+
+  console.log(
+    "[Paytm Checkout JS URL]",
+    src
   );
 
-  if (existing && window.Paytm?.CheckoutJS) {
+  /*
+   * Already correctly loaded
+   */
+  if (
+    window.Paytm?.CheckoutJS
+  ) {
     return Promise.resolve();
   }
 
-  if (existing) {
-    return new Promise((resolve, reject) => {
-      existing.addEventListener("load", () => resolve());
-      existing.addEventListener("error", () =>
-        reject(new Error("Unable to load Paytm checkout."))
-      );
-    });
-  }
-
+  /*
+   * Remove previous Paytm scripts
+   */
   document
-    .querySelectorAll('script[data-paytm-checkout]')
-    .forEach((node) => node.remove());
+    .querySelectorAll(
+      "script[data-paytm-checkout]"
+    )
+    .forEach((node) => {
+      node.remove();
+    });
 
-  delete window.Paytm;
+  return new Promise(
+    (resolve, reject) => {
+      const script =
+        document.createElement(
+          "script"
+        );
 
-  return new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = src;
-    script.async = true;
-    script.dataset.paytmCheckout = merchantId;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Unable to load Paytm checkout."));
-    document.body.appendChild(script);
-  });
+      script.type =
+        "application/javascript";
+
+      script.src = src;
+
+      script.async = true;
+
+      script.crossOrigin =
+        "anonymous";
+
+      script.dataset.paytmCheckout =
+        merchantId;
+
+      script.onload = () => {
+        console.log(
+          "[Paytm] checkout.js loaded"
+        );
+
+        if (
+          window.Paytm?.CheckoutJS
+        ) {
+          resolve();
+
+          return;
+        }
+
+        reject(
+          new Error(
+            "Paytm CheckoutJS is unavailable after script load."
+          )
+        );
+      };
+
+      script.onerror = (
+        error
+      ) => {
+        console.error(
+          "[Paytm] checkout script load failed",
+          {
+            src,
+            error,
+          }
+        );
+
+        reject(
+          new Error(
+            "Unable to load Paytm checkout."
+          )
+        );
+      };
+
+      document.head.appendChild(
+        script
+      );
+    }
+  );
 }
+// function loadPaytmScript(host, mid) {
+//   const merchantId = String(mid || "").trim();
+
+//   if (!merchantId) {
+//     return Promise.reject(new Error("Paytm merchant ID is missing."));
+//   }
+
+//   const src = `${host}/merchantpgpui/checkoutjs/merchants/${encodeURIComponent(
+//     merchantId
+//   )}/checkout.js`;
+
+//   const existing = document.querySelector(
+//     `script[data-paytm-checkout="${merchantId}"]`
+//   );
+
+//   if (existing && window.Paytm?.CheckoutJS) {
+//     return Promise.resolve();
+//   }
+
+//   if (existing) {
+//     return new Promise((resolve, reject) => {
+//       existing.addEventListener("load", () => resolve());
+//       existing.addEventListener("error", () =>
+//         reject(new Error("Unable to load Paytm checkout."))
+//       );
+//     });
+//   }
+
+//   document
+//     .querySelectorAll('script[data-paytm-checkout]')
+//     .forEach((node) => node.remove());
+
+//   delete window.Paytm;
+
+//   return new Promise((resolve, reject) => {
+//     const script = document.createElement("script");
+//     script.src = src;
+//     script.async = true;
+//     script.dataset.paytmCheckout = merchantId;
+//     script.onload = () => resolve();
+//     script.onerror = () => reject(new Error("Unable to load Paytm checkout."));
+//     document.body.appendChild(script);
+//   });
+// }
 
 
 

@@ -1652,309 +1652,280 @@ export default function Profile() {
             </div>
           )}
 
-          <div className="overflow-x-auto">
+         <div className="overflow-x-auto">
 
-            <table className="
-              min-w-full
-              border-collapse
-              text-left
-              text-sm
-            ">
+  <table className="
+    min-w-full
+    border-collapse
+    text-left
+    text-sm
+  ">
 
-              <thead>
+    <thead>
+      <tr className="
+        bg-[#f4f4f4]
+        text-[#243346]
+      ">
 
-                <tr className="
-                  bg-[#f4f4f4]
-                  text-[#243346]
+        <th className="px-3 py-3">
+          Order
+        </th>
+
+        <th className="px-3 py-3">
+          Date
+        </th>
+
+        <th className="px-3 py-3">
+          Status
+        </th>
+
+        <th className="px-3 py-3">
+          Total
+        </th>
+
+        <th className="
+          w-[250px]
+          min-w-[250px]
+          px-3
+          py-3
+        ">
+          Actions
+        </th>
+
+      </tr>
+    </thead>
+
+    <tbody>
+
+      {orders.map(
+        (
+          order,
+          index
+        ) => {
+          const orderId =
+            getOrderId(order) ||
+            index + 1;
+
+          const status =
+            normalizeOrderStatus(
+              order?.status
+            );
+
+          const pending =
+            status ===
+            "Pending payment";
+
+          const itemCount =
+            getOrderItemCount(
+              order
+            );
+
+          const isCancelling =
+            cancellingOrderId ===
+            String(orderId);
+
+          return (
+            <tr
+              key={orderId}
+              className="
+                border-b
+                border-slate-100
+                even:bg-[#f7f7f7]
+              "
+            >
+
+              {/* ORDER */}
+              <td className="
+                px-3
+                py-2.5
+              ">
+                <button
+                  type="button"
+                  onClick={() =>
+                    viewOrder(order)
+                  }
+                  className="
+                    font-bold
+                    text-[#D9A537]
+                    hover:underline
+                  "
+                >
+                  #{orderId}
+                </button>
+              </td>
+
+              {/* DATE */}
+              <td className="
+                whitespace-nowrap
+                px-3
+                py-2.5
+                text-slate-600
+              ">
+                {formatOrderDate(
+                  order?.date ||
+                  order?.createdAt ||
+                  order?.created_at ||
+                  order?.date_created
+                )}
+              </td>
+
+              {/* STATUS */}
+              <td className="
+                whitespace-nowrap
+                px-3
+                py-2.5
+                text-slate-600
+              ">
+                {status}
+              </td>
+
+              {/* TOTAL */}
+              <td className="
+                whitespace-nowrap
+                px-3
+                py-2.5
+                text-slate-600
+              ">
+                ₹
+                {getOrderTotal(
+                  order
+                ).toFixed(2)}
+
+                {itemCount > 0 && (
+                  <>
+                    {" "}
+                    for{" "}
+                    {itemCount}{" "}
+                    {itemCount === 1
+                      ? "item"
+                      : "items"}
+                  </>
+                )}
+              </td>
+
+              {/* ACTIONS */}
+              <td className="
+                w-[250px]
+                min-w-[250px]
+                whitespace-nowrap
+                px-3
+                py-2.5
+                align-middle
+              ">
+
+                <div className="
+                  flex
+                  flex-nowrap
+                  items-center
+                  gap-1.5
                 ">
 
-                  <th className="px-5 py-5">
-                    Order
-                  </th>
+                  {/* PAY */}
+                  {pending && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        payOrder(order)
+                      }
+                      className="
+                        btn-gold
+                        inline-flex
+                        shrink-0
+                        items-center
+                        justify-center
+                        gap-1
+                        rounded-sm
+                        px-2
+                        py-1
+                        text-[11px]
+                        font-bold
+                      "
+                    >
+                      <CreditCard
+                        size={12}
+                      />
 
-                  <th className="px-5 py-5">
-                    Date
-                  </th>
+                      Pay
+                    </button>
+                  )}
 
-                  <th className="px-5 py-5">
-                    Status
-                  </th>
+                  {/* VIEW */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      viewOrder(order)
+                    }
+                    className="
+                      btn-gold
+                      inline-flex
+                      shrink-0
+                      items-center
+                      justify-center
+                      gap-1
+                      rounded-sm
+                      px-2
+                      py-1
+                      text-[11px]
+                      font-bold
+                    "
+                  >
+                    View
 
-                  <th className="px-5 py-5">
-                    Total
-                  </th>
+                    <Eye
+                      size={12}
+                    />
+                  </button>
 
-                  <th className="px-5 py-5">
-                    Actions
-                  </th>
+                  {/* CANCEL */}
+                  {pending && (
+                    <button
+                      type="button"
+                      disabled={
+                        isCancelling
+                      }
+                      onClick={() =>
+                        cancelOrder(order)
+                      }
+                      className="
+                        btn-gold
+                        inline-flex
+                        shrink-0
+                        items-center
+                        justify-center
+                        gap-1
+                        rounded-sm
+                        px-2
+                        py-1
+                        text-[11px]
+                        font-bold
+                        disabled:cursor-not-allowed
+                        disabled:opacity-60
+                      "
+                    >
+                      <XCircle
+                        size={12}
+                      />
 
-                </tr>
+                      {isCancelling
+                        ? "Cancelling..."
+                        : "Cancel"}
+                    </button>
+                  )}
 
-              </thead>
+                </div>
 
-              <tbody>
+              </td>
 
-                {orders.map(
-                  (
-                    order,
-                    index
-                  ) => {
-                    const orderId =
-                      getOrderId(
-                        order
-                      ) ||
-                      index + 1;
+            </tr>
+          );
+        }
+      )}
 
-                    const status =
-                      normalizeOrderStatus(
-                        order
-                          ?.status
-                      );
+    </tbody>
 
-                    const pending =
-                      status ===
-                      "Pending payment";
+  </table>
 
-                    const itemCount =
-                      getOrderItemCount(
-                        order
-                      );
-
-                    const isCancelling =
-                      cancellingOrderId ===
-                      String(
-                        orderId
-                      );
-
-                    return (
-                      <tr
-                        key={
-                          orderId
-                        }
-                        className="
-                          border-b
-                          border-slate-100
-                          even:bg-[#f7f7f7]
-                        "
-                      >
-
-                        {/* ORDER */}
-
-                        <td className="
-                          px-5
-                          py-4
-                        ">
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              viewOrder(
-                                order
-                              )
-                            }
-                            className="
-                              font-bold
-                              text-[#D9A537]
-                              hover:underline
-                            "
-                          >
-                            #{orderId}
-                          </button>
-
-                        </td>
-
-                        {/* DATE */}
-
-                        <td className="
-                          whitespace-nowrap
-                          px-5
-                          py-4
-                          text-slate-600
-                        ">
-                          {formatOrderDate(
-                            order
-                              ?.date ||
-                              order
-                                ?.createdAt ||
-                              order
-                                ?.created_at ||
-                              order
-                                ?.date_created
-                          )}
-                        </td>
-
-                        {/* STATUS */}
-
-                        <td className="
-                          whitespace-nowrap
-                          px-5
-                          py-4
-                          text-slate-600
-                        ">
-                          {status}
-                        </td>
-
-                        {/* TOTAL */}
-
-                        <td className="
-                          whitespace-nowrap
-                          px-5
-                          py-4
-                          text-slate-600
-                        ">
-
-                          ₹
-                          {getOrderTotal(
-                            order
-                          ).toFixed(
-                            2
-                          )}
-
-                          {itemCount >
-                            0 && (
-                            <>
-                              {" "}
-                              for{" "}
-                              {itemCount}{" "}
-                              {itemCount ===
-                              1
-                                ? "item"
-                                : "items"}
-                            </>
-                          )}
-
-                        </td>
-
-                        {/* ACTIONS */}
-
-                        <td className="
-                          whitespace-nowrap
-                          px-5
-                          py-4
-                        ">
-
-                          <div className="
-                            flex
-                            flex-wrap
-                            gap-2
-                          ">
-
-                            {/* PAY */}
-
-                            {pending && (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  payOrder(
-                                    order
-                                  )
-                                }
-                                className="
-                                  btn-gold
-                                  inline-flex
-                                  items-center
-                                  gap-1.5
-                                  rounded-sm
-                                  px-3
-                                  py-2
-                                  text-xs
-                                  font-bold
-                                "
-                              >
-                                <CreditCard
-                                  size={
-                                    14
-                                  }
-                                />
-
-                                Pay
-                              </button>
-                            )}
-
-                            {/* VIEW */}
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                viewOrder(
-                                  order
-                                )
-                              }
-                              className="
-                                btn-gold
-                                inline-flex
-                                items-center
-                                gap-1.5
-                                rounded-sm
-                                px-3
-                                py-2
-                                text-xs
-                                font-bold
-                              "
-                            >
-                              View
-
-                              <Eye
-                                size={
-                                  14
-                                }
-                              />
-                            </button>
-
-                            {/* CANCEL */}
-
-                            {pending && (
-                              <button
-                                type="button"
-                                disabled={
-                                  isCancelling
-                                }
-                                onClick={() =>
-                                  cancelOrder(
-                                    order
-                                  )
-                                }
-                                className="
-                                  btn-gold
-                                  inline-flex
-                                  items-center
-                                  gap-1.5
-                                  rounded-sm
-                                  px-3
-                                  py-2
-                                  text-xs
-                                  font-bold
-                                  disabled:cursor-not-allowed
-                                  disabled:opacity-60
-                                "
-                              >
-                                <XCircle
-                                  size={
-                                    14
-                                  }
-                                />
-
-                                {isCancelling
-                                  ? "Cancelling..."
-                                  : "Cancel"}
-                              </button>
-                            )}
-
-                          </div>
-
-                        </td>
-
-                      </tr>
-                    );
-                  }
-                )}
-
-              </tbody>
-
-            </table>
-
-          </div>
-
+</div>
         </div>
       );
     };
@@ -1986,7 +1957,8 @@ export default function Profile() {
         </span>
 
         <Link
-          to="/"
+          // to="/"
+          to="/collections"
           className="font-black"
         >
           Browse products »

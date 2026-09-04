@@ -260,11 +260,18 @@ export default function Checkout() {
               previous.lastName ||
               "",
 
+            // email:
+            //   billing.email ||
+            //   customer?.email ||
+            //   previous.email ||
+            //   "",
             email:
-              billing.email ||
-              customer?.email ||
-              previous.email ||
-              "",
+  String(
+    billing.email ||
+    customer?.email ||
+    previous.email ||
+    ""
+  ).toLowerCase(),
 
             phone:
               billing.phone ||
@@ -386,7 +393,13 @@ export default function Checkout() {
         ...previous,
         firstName: savedAddress.firstName || previous.firstName,
         lastName: savedAddress.lastName || previous.lastName,
-        email: savedAddress.email || previous.email,
+        // email: savedAddress.email || previous.email,
+        email:
+  String(
+    savedAddress.email ||
+    previous.email ||
+    ""
+  ).toLowerCase(),
         phone: savedAddress.phone || previous.phone,
         address: savedAddress.address || previous.address,
         address2: savedAddress.address2 || previous.address2,
@@ -432,15 +445,42 @@ export default function Checkout() {
         }
       );
 
-      if (
-        form.email &&
-        !/^\S+@\S+\.\S+$/.test(
-          form.email
-        )
-      ) {
-        next.email =
-          "Please enter a valid email address.";
-      }
+      // if (
+      //   form.email &&
+      //   !/^\S+@\S+\.\S+$/.test(
+      //     form.email
+      //   )
+      // ) {
+      //   next.email =
+      //     "Please enter a valid email address.";
+      // }
+      const phone =
+  String(
+    form.phone || ""
+  ).trim();
+
+if (
+  phone &&
+  !/^\d{10}$/.test(phone)
+) {
+  next.phone =
+    "Phone number must be exactly 10 digits.";
+}
+
+const email =
+  String(
+    form.email || ""
+  ).trim();
+
+if (
+  email &&
+  !/^[a-z0-9._%+-]+@gmail\.com$/.test(
+    email
+  )
+) {
+  next.email =
+    "Email must be lowercase and end with @gmail.com.";
+}
 
       setErrors(next);
 
@@ -1112,26 +1152,6 @@ export default function Checkout() {
             "Order was created but order ID was not returned."
           );
         }
-
-        /*
-         * IMPORTANT:
-         *
-         * DO NOT:
-         * localStorage.setItem(...)
-         * sessionStorage.setItem(...)
-         *
-         * DO NOT clear cart yet.
-         *
-         * Pending order should remain
-         * visible if payment cancelled.
-         */
-
-        /*
-         * Go to Pay For Order page.
-         *
-         * There Pay Now button should
-         * open Paytm gateway.
-         */
         saveCheckoutDraft({
           form,
           notes,
@@ -1151,30 +1171,29 @@ export default function Checkout() {
 
         try {
           await payOrderWithPaytm(orderId, {
-            // onSuccess: async () => {
-            //   clearCheckoutDraft();
-            //   navigate(
-            //     `/order-success?orderId=${orderId}`,
-            //     { replace: true }
-            //   );
-            // },
             onSuccess: async () => {
-  await clearCart();
+               await clearCart();
+              clearCheckoutDraft();
+              navigate(
+                `/order-success?orderId=${orderId}`,
+                { replace: true }
+              );
+            },
 
-  clearCheckoutDraft();
+            // onFailure: () => {
+            //   goToPayPage();
+            // },
+            onFailure: async () => {
+              await clearCart();
 
-  navigate(
-    `/order-success?orderId=${orderId}`,
-    {
-      replace: true,
-    }
-  );
-},
-            onFailure: () => {
               goToPayPage();
             },
           });
+        // } catch {
+        //   goToPayPage();
+        // }
         } catch {
+          await clearCart();
           goToPayPage();
         }
       } catch (error) {
@@ -1650,8 +1669,7 @@ export default function Checkout() {
               font-black
               text-[#243346]
             ">
-              Global Edge School
-              of Learning
+              CORNERSTONE School of Learning
             </h2>
 
             {/* =============================================

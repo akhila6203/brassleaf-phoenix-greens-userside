@@ -1,7 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 120">
-  <rect x="8" y="12" width="96" height="96" rx="26" fill="#243346"/>
-  <path d="M56 29l8 18 19-3-8 17 15 12-19 2-2 19-14-13-17 10 4-19-18-8 17-9-1-19 16 10z" fill="#D9A537"/>
-  <text x="125" y="78" font-family="Georgia, serif" font-size="54" font-weight="700" fill="#243346">BrASS</text>
-  <text x="315" y="78" font-family="Georgia, serif" font-size="54" font-weight="700" fill="#243346">LeAF</text>
-  <rect x="318" y="87" width="20" height="5" rx="2" fill="#D9A537"/>
-</svg>

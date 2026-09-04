@@ -55,12 +55,38 @@ export default function AddressForm({ value, onChange, errors = {}, title }) {
         </div>
         <div className="sm:col-span-2">
           <label className="mb-2 block text-sm font-semibold text-[#243346]">Phone <span className="text-red-500">*</span></label>
-          <input type="tel" value={value.phone || ""} onChange={(e) => update("phone", e.target.value)} className={inputClass("phone")} />
+          {/* <input type="tel" value={value.phone || ""} onChange={(e) => update("phone", e.target.value)} className={inputClass("phone")} /> */}
+          <input
+  type="tel"
+  inputMode="numeric"
+  maxLength={10}
+  value={value.phone || ""}
+  onChange={(e) => {
+    const phone =
+      e.target.value
+        .replace(/\D/g, "")
+        .slice(0, 10);
+
+    update("phone", phone);
+  }}
+  className={inputClass("phone")}
+/>
           {error("phone")}
         </div>
         <div className="sm:col-span-2">
           <label className="mb-2 block text-sm font-semibold text-[#243346]">Email address <span className="text-red-500">*</span></label>
-          <input type="email" value={value.email || ""} onChange={(e) => update("email", e.target.value)} className={inputClass("email")} />
+          {/* <input type="email" value={value.email || ""} onChange={(e) => update("email", e.target.value)} className={inputClass("email")} /> */}
+          <input
+            type="email"
+            value={value.email || ""}
+            onChange={(e) => {
+              const email =
+                e.target.value.toLowerCase();
+
+              update("email", email);
+            }}
+            className={inputClass("email")}
+          />
           {error("email")}
         </div>
         <div className="sm:col-span-2">

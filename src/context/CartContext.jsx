@@ -54,6 +54,8 @@ export function CartProvider({
   const loadedUserRef =
     useRef(null);
 
+  const cartClearVersionRef =
+  useRef(0);
   /* =========================================================
      MERGE CARTS
   ========================================================= */
@@ -156,6 +158,7 @@ export function CartProvider({
   useEffect(() => {
     let active = true;
 
+    
     async function loadCart() {
       /*
        * Wait until AuthContext finishes
@@ -226,6 +229,8 @@ export function CartProvider({
         return;
       }
 
+      const loadVersion =
+  cartClearVersionRef.current;
       try {
         setCartLoading(
           true
@@ -238,6 +243,12 @@ export function CartProvider({
             "/auth/customer/cart"
           );
 
+          if (
+            loadVersion !==
+            cartClearVersionRef.current
+          ) {
+            return;
+          }
         const databaseCart =
           Array.isArray(
             data?.items
@@ -252,43 +263,61 @@ export function CartProvider({
           guestCartRef
             .current;
 
-        const mergedCart =
-          mergeCarts(
-            databaseCart,
-            guestCart
-          );
+       const mergedCart =
+  mergeCarts(
+    databaseCart,
+    guestCart
+  );
 
-        if (!active) {
-          return;
-        }
+if (!active) {
+  return;
+}
 
-        setCart(
-          mergedCart
-        );
+/*
+ * clearCart() happened while
+ * loadCart was running.
+ *
+ * Do NOT restore old cart.
+ */
+if (
+  loadVersion !==
+  cartClearVersionRef.current
+) {
+  return;
+}
 
-        /*
-         * Guest items now belong
-         * to logged-in customer.
-         */
-        guestCartRef.current =
-          [];
+setCart(
+  mergedCart
+);
 
-        loadedUserRef.current =
-          String(
-            userId
-          );
+guestCartRef.current =
+  [];
 
-        /*
-         * Save merged result
-         * to this customer's DB cart.
-         */
-        await axiosClient.put(
-          "/auth/customer/cart",
-          {
-            items:
-              mergedCart,
-          }
-        );
+loadedUserRef.current =
+  String(
+    userId
+  );
+
+/*
+ * clearCart() may happen after setCart()
+ * but before this DB PUT.
+ *
+ * So check again.
+ */
+if (
+  loadVersion !==
+  cartClearVersionRef.current
+) {
+  return;
+}
+
+await axiosClient.put(
+  "/auth/customer/cart",
+  {
+    items:
+      mergedCart,
+  }
+);
       } catch (error) {
         console.error(
           "Load customer cart error:",
@@ -537,37 +566,91 @@ export function CartProvider({
   /* =========================================================
      CLEAR
   ========================================================= */
-
   const clearCart =
-    async () => {
+  async () => {
+    /*
+     * Stop any old cart load
+     * from restoring cart again.
+     */
+    cartClearVersionRef.current += 1;
+
+    /*
+     * Clear frontend cart.
+     */
+    setCart([]);
+    guestCartRef.current = [];
+
+    /*
+     * Mark current user as already handled.
+     */
+    if (user?.id) {
+      loadedUserRef.current =
+        String(user.id);
+    }
+
+    try {
+      /*
+       * Clear customer's DB cart.
+       */
+      await axiosClient.delete(
+        "/auth/customer/cart"
+      );
+
+      /*
+       * Extra safety:
+       * DB cart must remain empty.
+       */
+      await axiosClient.put(
+        "/auth/customer/cart",
+        {
+          items: [],
+        }
+      );
+
+      /*
+       * Keep UI empty.
+       */
+      guestCartRef.current = [];
       setCart([]);
-
-      /*
-       * Guest
-       */
+    } catch (error) {
       if (
-        !isAuthenticated
+        error?.response?.status !== 401
       ) {
-        guestCartRef.current =
-          [];
-
-        return;
-      }
-
-      /*
-       * Logged-in customer
-       */
-      try {
-        await axiosClient.delete(
-          "/auth/customer/cart"
-        );
-      } catch (error) {
         console.error(
           "Clear cart error:",
           error
         );
       }
-    };
+
+      guestCartRef.current = [];
+      setCart([]);
+    }
+  };
+// const clearCart =
+//   async () => {
+//     /*
+//      * Always clear UI + guest memory first.
+//      */
+//     setCart([]);
+//     guestCartRef.current = [];
+
+//     try {
+//       await axiosClient.delete(
+//         "/auth/customer/cart"
+//       );
+//     } catch (error) {
+     
+//       if (
+//         error?.response?.status !== 401
+//       ) {
+//         console.error(
+//           "Clear cart error:",
+//           error
+//         );
+//       }
+//     }
+//   };
+
 
   /* =========================================================
      LOGOUT HANDLING
@@ -644,9 +727,9 @@ export function CartProvider({
    * Keep your existing shipping rule.
    */
   const shipping =
-    subtotal > 0 &&
-    subtotal < 2000
-      ? 99
+    subtotal > 0 
+    // && subtotal < 2000
+      ? 150
       : 0;
 
   const total =

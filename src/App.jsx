@@ -5,7 +5,9 @@ import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 import Home from "./pages/Home";
 import Collections from "./pages/Collections";
+import UniformCollection from "./pages/UniformCollection";
 import ProductDetails from "./pages/ProductDetails";
+
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
@@ -70,9 +72,41 @@ function AppShell() {
       />
 
       <Routes location={location}>
-        <Route path="/" element={<Home />} />
+        <Route
+  path="/"
+  element={<Home />}
+/>
+
+<Route
+  path="/uniforms/:collectionSlug"
+  element={
+    <UniformCollection
+      requireAuth={requireAuth}
+    />
+  }
+/>
+
+<Route
+  path="/collections"
+  element={
+    <Collections
+      requireAuth={requireAuth}
+    />
+  }
+/>
+
+<Route
+  path="/products/:id"
+  element={
+    <ProductDetails
+      requireAuth={requireAuth}
+    />
+  }
+/>
+        {/* <Route path="/" element={<Home />} />
         <Route path="/collections" element={<Collections requireAuth={requireAuth} />} />
-        <Route path="/products/:id" element={<ProductDetails requireAuth={requireAuth} />} />
+        <Route path="/products/:id" element={<ProductDetails requireAuth={requireAuth} />} /> */}
+
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/pay-for-order/:orderId" element={<PayForOrder />} />

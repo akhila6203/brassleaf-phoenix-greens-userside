@@ -145,7 +145,7 @@ export default function Header({
               aria-label="Home"
             >
               <img
-                src="/logo3.jpg"
+                src="/logo.jpg"
                 alt="School Uniforms"
                 className="
                   h-9
