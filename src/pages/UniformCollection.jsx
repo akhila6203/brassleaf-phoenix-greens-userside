@@ -4,112 +4,432 @@ import {
   useParams,
 } from "react-router-dom";
 
-import {
-  useMemo,
-} from "react";
-
 import ProductCard from "../components/ProductCard";
 
 import {
   useProducts,
 } from "../hooks/useProducts";
 
-/* =========================================================
-   CORNERSTONE HERO IMAGE
 
-   Same image referenced by Cornerstone database.
-========================================================= */
 
-const CORNERSTONE_BANNER =
-  "https://brassleaf.store/cornerstone/wp-content/uploads/2025/02/corner_stone_img.webp";
+function normalizeProductName(
+  value = ""
+) {
+  return String(value)
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
 
-/* =========================================================
-   CORNERSTONE PAGE CONFIGURATION
+function sortProductsByOrder(
+  products = [],
+  order = []
+) {
+  if (
+    !Array.isArray(products) ||
+    products.length === 0
+  ) {
+    return [];
+  }
 
-   IMPORTANT:
+  if (
+    !Array.isArray(order) ||
+    order.length === 0
+  ) {
+    return products;
+  }
 
-   These product IDs are NOT newly invented frontend data.
+  const normalizedOrder =
+    order.map(
+      normalizeProductName
+    );
 
-   They are the exact query_posts_ids saved inside the
-   uploaded Cornerstone WordPress database for these
-   four pages.
+  return [...products].sort(
+    (a, b) => {
+      const aName =
+        normalizeProductName(
+          a?.name || ""
+        );
 
-   Backend/API does NOT need to change.
-========================================================= */
+      const bName =
+        normalizeProductName(
+          b?.name || ""
+        );
+
+      const aIndex =
+        normalizedOrder.indexOf(
+          aName
+        );
+
+      const bIndex =
+        normalizedOrder.indexOf(
+          bName
+        );
+
+      if (
+        aIndex !== -1 &&
+        bIndex !== -1
+      ) {
+        return aIndex - bIndex;
+      }
+
+      if (
+        aIndex !== -1
+      ) {
+        return -1;
+      }
+
+      if (
+        bIndex !== -1
+      ) {
+        return 1;
+      }
+
+      return aName.localeCompare(
+        bName
+      );
+    }
+  );
+}
 
 const COLLECTIONS = {
-  "nursery-to-4th-class-boys-uniform":
-    {
-      title:
-        "PP1 - Grade 4 (BOYS)",
+    primary: {
+  title:
+    "Nursery, PP-1 & PP-2",
 
-      productIds: [
-        11184,
-        11234,
-        11245,
-        11266,
-        11277,
-        11287,
-        11577,
-      ],
-    },
+  regularCategory:
+    "nursery-1-2,jacket",
 
-  "nursery-to-4th-class-girls-uniform":
-    {
-      title:
-        "PP1 - Grade 4 (GIRLS)",
+  sportsCategory:
+    "sports-nur-1-2",
 
-      productIds: [
-        11219,
-        11234,
-        11245,
-        11266,
-        11277,
-        11287,
-        11948,
-      ],
-    },
+  regularBreadcrumb: {
+    name:
+      "Nursery-1-2",
 
-  "5th-class-to-12th-class-boys-uniform":
-    {
-      title:
-        "Grade 5 - Grade 12 (BOYS)",
+    slug:
+      "nursery-1-2",
+  },
 
-      productIds: [
-        11234,
-        11245,
-        11266,
-        11277,
-        11287,
-        11577,
-        11201,
-      ],
-    },
+  sportsBreadcrumb: {
+    name:
+      "Sports Nur-1-2",
 
-  "5th-class-to-12th-class-girls-uniform":
-    {
-      title:
-        "Grade 5 - Grade 12 (GIRLS)",
+    slug:
+      "sports-nur-1-2",
+  },
 
-      productIds: [
-        11234,
-        11245,
-        11266,
-        11277,
-        11287,
-        11660,
-        11563,
-      ],
-    },
+  /* EXACT REGULAR ORDER FROM YOUR SCREENSHOT */
+
+  regularOrder: [
+    "PG Belt Boys / Girls",
+    "PG Navy Blue T-Shirt",
+    "PG Boys Khaki Shorts",
+    "PG Girls Yellow T-Shirt",
+    "PG Girls Green Skirt",
+    "PG Jacket",
+  ],
+
+  /* EXACT SPORTS ORDER FROM YOUR SCREENSHOT */
+
+  sportsOrder: [
+    "PG Black Sports Track",
+    "PG Grey T-Shirt",
+  ],
+},
+"grade-1-and-2": {
+  title:
+    "Class -1 & 2 (CBSE, Cambridge)",
+
+  regularCategory:
+    "grade1-2,jacket",
+
+  sportsCategory:
+    "sports-1-5,sr-sports-uniform",
+
+  regularBreadcrumb: {
+    name:
+      "Grade1-2",
+
+    slug:
+      "grade1-2",
+  },
+
+  sportsBreadcrumb: {
+    name:
+      "Sports-1-5",
+
+    slug:
+      "sports-1-5",
+  },
+
+  regularOrder: [
+    "PG Belt Boys / Girls",
+    "PG Girls Yellow T-Shirt 1 & 2",
+    "PG Girls Green Skirt 1-2",
+    "PG Navy Blue T-Shirt 1-2",
+    "PG Boys Khaki Shorts",
+    "PG Jacket",
+  ],
+  sportsOrder: [
+    "PG Light Red Kakathiya",
+    "PG Blue Maurya",
+    "PG Green Pandiya",
+    "PG Yellow Chalukya",
+    "PG Black Sports Track",
+  ],
+},
+
+"grade-3-5": {
+  title:
+    "Class -3 to 5 (CBSE, Cambridge)",
+
+  regularCategory:
+    "grade-3-5,jacket,white-shirt",
+
+  sportsCategory:
+    "sports-1-5,sr-sports-uniform",
+
+  regularBreadcrumb: {
+    name:
+      "Grade 3-5",
+
+    slug:
+      "grade-3-5",
+  },
+
+  sportsBreadcrumb: {
+    name:
+      "Sports-1-5",
+
+    slug:
+      "sports-1-5",
+  },
+
+  regularOrder: [
+    "PG Girls Ties",
+    "PG Boys Ties",
+    "PG Belt Boys / Girls",
+    "PG Girls Straight Skirt - Grey Girls Skirt",
+    "PG White Shirt Boys / Girls",
+    "PG Boys Necker",
+    "PG Jacket",
+  ],
+
+  sportsOrder: [
+    "PG Light Red Kakathiya",
+    "PG Blue Maurya",
+    "PG Green Pandiya",
+    "PG Yellow Chalukya",
+    "PG Black Sports Track",
+  ],
+},
+
+"grade-6-12": {
+  title:
+    "Class -6 to 12 (CBSE, Cambridge)",
+
+  regularCategory:
+    "grade-6-12,jacket,white-shirt",
+
+  sportsCategory:
+    "sr-sports-uniform",
+
+  regularBreadcrumb: {
+    name:
+      "Grade 6-12",
+
+    slug:
+      "grade-6-12",
+  },
+
+  sportsBreadcrumb: {
+    name:
+      "Sr. Sports Uniform",
+
+    slug:
+      "sr-sports-uniform",
+  },
+
+  /* =====================================================
+     REGULAR UNIFORM ORDER
+     Same order as your screenshot
+  ===================================================== */
+
+  regularOrder: [
+    "PG Girls Ties",
+    "PG Boys Ties",
+    "PG Belt Boys / Girls",
+    "PG Girls Straight Skirt - Grey Girls Skirt",
+    "PG White Shirt Boys / Girls",
+    "PG Grey Boys Trousers",
+    "PG Jacket",
+  ],
+
+  /* =====================================================
+     SPORTS UNIFORM ORDER
+     Same order as your screenshot
+  ===================================================== */
+
+  sportsOrder: [
+    "PG Light Red Kakathiya",
+    "PG Blue Maurya",
+    "PG Green Pandiya",
+    "PG Yellow Chalukya",
+    "PG Black Sports Track",
+  ],
+},
 };
+
+/* =========================================================
+   PRODUCT SECTION
+========================================================= */
+
+function ProductSection({
+  title,
+  products,
+  loading,
+  error,
+  order = [],
+
+  categoryContext,
+
+}) {
+
+  const orderedProducts =
+  sortProductsByOrder(
+    products,
+    order
+  );
+  return (
+    <section className="pb-10 sm:pb-14">
+
+      <h2
+        className="
+          mb-6
+          text-center
+          text-xl
+          font-black
+          text-[#243346]
+
+          sm:text-2xl
+        "
+      >
+        {title}
+      </h2>
+
+      {/* LOADING */}
+
+      {loading ? (
+        <div
+          className="
+            flex
+            min-h-[220px]
+            items-center
+            justify-center
+          "
+        >
+          <div
+            className="
+              h-10
+              w-10
+              animate-spin
+              rounded-full
+              border-4
+              border-[#D9A537]
+              border-t-transparent
+            "
+          />
+        </div>
+      ) : error ? (
+
+        /* ERROR */
+
+        <p
+          className="
+            py-10
+            text-center
+            text-sm
+            font-semibold
+            text-red-600
+          "
+        >
+          {error}
+        </p>
+
+      ) : products.length === 0 ? (
+
+        /* EMPTY */
+
+        <p
+          className="
+            py-10
+            text-center
+            text-sm
+            text-slate-500
+          "
+        >
+          No products available.
+        </p>
+
+      ) : (
+
+        /* PRODUCT GRID */
+
+        <div
+          className="
+            grid
+            grid-cols-2
+            gap-x-3
+            gap-y-8
+
+            sm:grid-cols-3
+            sm:gap-x-5
+
+            lg:grid-cols-4
+            lg:gap-x-7
+            lg:gap-y-11
+          "
+        >
+{/* 
+          {products.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              showPrice={false}
+              categoryContext={
+                categoryContext
+              }
+            />
+          ))} */}
+          {orderedProducts.map(
+  (product) => (
+    <ProductCard
+      key={product.id}
+
+      product={product}
+
+      showPrice={false}
+
+      categoryContext={
+        categoryContext
+      }
+    />
+  )
+)}
+        </div>
+      )}
+
+    </section>
+  );
+}
 
 /* =========================================================
    PAGE
 ========================================================= */
 
-export default function UniformCollection({
-  requireAuth,
-}) {
+export default function UniformCollection() {
+
   const {
     collectionSlug,
   } = useParams();
@@ -119,8 +439,72 @@ export default function UniformCollection({
       collectionSlug
     ];
 
+  /*
+  Keep hooks unconditional.
+
+  When URL is invalid,
+  requests are disabled.
+  */
+
+  const enabled =
+    Boolean(collection);
+
   /* =====================================================
-     INVALID URL
+     REGULAR UNIFORM PRODUCTS
+  ===================================================== */
+
+  const regular =
+    useProducts(
+      {
+        page: 1,
+
+        limit: 100,
+
+        sort:
+          "name",
+
+        dir:
+          "asc",
+
+        category:
+          collection
+            ?.regularCategory ||
+          "",
+      },
+      {
+        enabled,
+      }
+    );
+
+  /* =====================================================
+     SPORTS UNIFORM PRODUCTS
+  ===================================================== */
+
+  const sports =
+    useProducts(
+      {
+        page: 1,
+
+        limit: 100,
+
+        sort:
+          "name",
+
+        dir:
+          "asc",
+
+        category:
+          collection
+            ?.sportsCategory ||
+          "",
+      },
+      {
+        enabled,
+      }
+    );
+
+  /* =====================================================
+     INVALID PAGE
   ===================================================== */
 
   if (!collection) {
@@ -132,83 +516,17 @@ export default function UniformCollection({
     );
   }
 
-  /* =====================================================
-     EXISTING PRODUCT API
-
-     No new backend endpoint.
-     No backend modification.
-
-     Existing:
-     GET /products/public
-  ===================================================== */
-
-  const {
-    products,
-    loading,
-    error,
-  } = useProducts({
-    page: 1,
-    limit: 100,
-    sort: "date",
-    dir: "desc",
-  });
-
-  /* =====================================================
-     FILTER PRODUCTS USING DATABASE PAGE PRODUCT IDS
-  ===================================================== */
-
-  const collectionProducts =
-    useMemo(() => {
-
-      const productMap =
-        new Map(
-          products.map(
-            (product) => [
-              Number(
-                product.id
-              ),
-              product,
-            ]
-          )
-        );
-
-      /*
-      Keep exact database order.
-
-      Example:
-      11184
-      11234
-      11245
-      ...
-      */
-
-      return collection.productIds
-        .map(
-          (productId) =>
-            productMap.get(
-              Number(
-                productId
-              )
-            )
-        )
-        .filter(Boolean);
-
-    }, [
-      products,
-      collection,
-    ]);
-
   return (
     <main
       className="
         min-h-[70vh]
-        bg-white
+        bg-[#f7f8fa]
       "
     >
 
-      {/* =====================================================
-          HERO BANNER
-      ===================================================== */}
+      {/* =============================================
+          SCHOOL BANNER
+      ============================================= */}
 
       <section
         className="
@@ -219,58 +537,49 @@ export default function UniformCollection({
         "
       >
         <img
-          src={CORNERSTONE_BANNER}
-          alt="Cornerstone School"
-          className="
-            h-[250px]
-            w-full
-            object-cover
-            object-center
+  src="/school-banner.webp"
+  alt="School campus"
+  className="
+    h-[220px]
+    w-full
+    object-cover
+    object-center
 
-            sm:h-[340px]
-
-            md:h-[400px]
-
-            lg:h-[435px]
-
-            xl:h-[455px]
-          "
-        />
+    sm:h-[315px]
+    md:h-[360px]
+    lg:h-[390px]
+  "
+/>
       </section>
 
-      {/* =====================================================
-          COLLECTION HEADING
-      ===================================================== */}
+      {/* =============================================
+          CLASS HEADING
+      ============================================= */}
 
       <section
         className="
-          bg-white
           px-4
           pb-5
-          pt-7
+          pt-6
 
-          sm:pb-7
-          sm:pt-8
-
-          lg:pb-8
+          sm:pt-7
         "
       >
         <div
           className="
             mx-auto
-            max-w-[1200px]
+            max-w-[1180px]
             text-center
           "
         >
           <h1
             className="
-              text-[22px]
+              text-[21px]
               font-black
               leading-tight
-              text-black
+              text-[#243346]
 
-              sm:text-[26px]
-
+              sm:text-[25px]
               lg:text-[28px]
             "
           >
@@ -279,175 +588,84 @@ export default function UniformCollection({
         </div>
       </section>
 
-      {/* =====================================================
+      {/* =============================================
           PRODUCTS
-      ===================================================== */}
+      ============================================= */}
 
-      <section
+      <div
         className="
-          bg-white
+          mx-auto
+          w-full
+          max-w-[1480px]
           px-4
           pb-14
 
-          sm:pb-16
+          sm:px-6
 
-          lg:pb-20
+          lg:px-8
         "
       >
-        <div
-          className="
-            mx-auto
-            w-full
-            max-w-[1200px]
-          "
-        >
 
-          {/* =============================================
-              LOADING
-          ============================================= */}
+        {/* REGULAR */}
+        <ProductSection
+  title="Regular Uniform"
+  products={
+    regular.products
+  }
+  loading={
+    regular.loading
+  }
+  error={
+    regular.error
+  }
+   order={
+    collection.regularOrder
+  }
+  categoryContext={
+    collection.regularBreadcrumb
+  }
+/>
 
-          {loading ? (
-            <div
-              className="
-                flex
-                min-h-[260px]
-                items-center
-                justify-center
-              "
-            >
-              <div
-                className="
-                  h-10
-                  w-10
-                  animate-spin
-                  rounded-full
-                  border-4
-                  border-[#D9A537]
-                  border-t-transparent
-                "
-              />
-            </div>
-          ) : error ? (
 
-            /* =========================================
-               ERROR
-            ========================================= */
+        {/* SPORTS */}
+          <ProductSection
+  title="Sports Uniform"
+  products={
+    sports.products
+  }
+  loading={
+    sports.loading
+  }
+  error={
+    sports.error
+  }
+  order={
+    collection.sportsOrder
+  }
+  categoryContext={
+    collection.sportsBreadcrumb
+  }
+/>
 
-            <div
-              className="
-                py-16
-                text-center
-              "
-            >
-              <p
-                className="
-                  font-semibold
-                  text-red-500
-                "
-              >
-                {error}
-              </p>
-            </div>
 
-          ) : collectionProducts.length ===
-            0 ? (
+        <div className="pt-1 text-center">
+          <Link
+            to="/"
+            className="
+              inline-flex
+              items-center
+              font-bold
+              text-[#243346]
+              transition
 
-            /* =========================================
-               EMPTY
-            ========================================= */
-
-            <div
-              className="
-                py-16
-                text-center
-              "
-            >
-              <p
-                className="
-                  text-slate-500
-                "
-              >
-                No products
-                available.
-              </p>
-            </div>
-
-          ) : (
-
-            /* =========================================
-               PRODUCT GRID
-
-               Existing ProductCard.
-               Existing Details.
-               Existing Add to Cart.
-               Existing Size check.
-               Existing API integration.
-            ========================================= */
-
-            <div
-              className="
-                grid
-                grid-cols-2
-                gap-x-3
-                gap-y-7
-
-                sm:grid-cols-3
-                sm:gap-x-5
-                sm:gap-y-9
-
-                lg:grid-cols-4
-                lg:gap-x-7
-                lg:gap-y-12
-              "
-            >
-              {collectionProducts.map(
-                (product) => (
-                  <ProductCard
-                    key={
-                      product.id
-                    }
-                    product={
-                      product
-                    }
-                    requireAuth={
-                      requireAuth
-                    }
-                  />
-                )
-              )}
-            </div>
-          )}
-
-          {/* =================================================
-              BACK HOME
-          ================================================= */}
-
-          {!loading &&
-            !error && (
-              <div
-                className="
-                  mt-12
-                  text-center
-                "
-              >
-                <Link
-                  to="/"
-                  className="
-                    inline-flex
-                    text-sm
-                    font-bold
-                    text-[#243346]
-                    transition
-                    hover:text-[#D9A537]
-                  "
-                >
-                  ← Back to Home
-                </Link>
-              </div>
-            )}
-
+              hover:text-[#D9A537]
+            "
+          >
+            ← Back to Home
+          </Link>
         </div>
-      </section>
+
+      </div>
 
     </main>
   );

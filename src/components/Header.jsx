@@ -148,16 +148,16 @@ export default function Header({
                 src="/logo.jpg"
                 alt="School Uniforms"
                 className="
-                  h-9
+                  h-12
                   w-auto
-                  max-w-[200px]
+                  max-w-[240px]
                   object-contain
 
-                  sm:h-12
-                  sm:max-w-[235px]
+                  sm:h-14
+                  sm:max-w-[255px]
 
-                  md:h-14
-                  md:max-w-[260px]
+                  md:h-16
+                  md:max-w-[280px]
 
                   lg:max-w-none
                 "

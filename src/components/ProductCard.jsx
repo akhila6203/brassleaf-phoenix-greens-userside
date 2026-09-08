@@ -1,19 +1,83 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { useCart } from "../context/CartContext";
+import {
+  Link,
+} from "react-router-dom";
 
-import { getProductById } from "../services/productService";
+import {
+  useCart,
+} from "../context/CartContext";
 
-import { toDetailProduct } from "../utils/productAdapter";
+import {
+  getProductById,
+} from "../services/productService";
+
+import {
+  toDetailProduct,
+} from "../utils/productAdapter";
+
+import QuickViewModal
+  from "./QuickViewModal";
+
+/* =========================================================
+   MONEY
+========================================================= */
+
+function money(value) {
+  if (
+    value == null ||
+    value === "" ||
+    Number.isNaN(Number(value))
+  ) {
+    return "";
+  }
+
+  return `₹${Number(value).toFixed(2)}`;
+}
+
+/* =========================================================
+   CATEGORY
+
+   From:
+   Boys, Grade 1-2, Nursery...
+
+   Display:
+   Boys
+========================================================= */
+
+function shortCategory(value = "") {
+  const parts = String(value)
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return (
+    parts.find((item) =>
+      /^(boys|girls|boys\/girls)$/i.test(item)
+    ) ||
+    parts[0] ||
+    ""
+  );
+}
+
+/* =========================================================
+   PRODUCT CARD
+========================================================= */
 
 export default function ProductCard({
   product,
-}) {
-  const navigate = useNavigate();
+  showPrice = true,
+    // Current category page context
+  categoryContext = null,
 
-  const { addToCart } =
-    useCart();
+}) {
+  const {
+    addToCart,
+  } = useCart();
 
   const [
     detailProduct,
@@ -30,19 +94,22 @@ export default function ProductCard({
     setAdding,
   ] = useState(false);
 
-  /*
-  =========================================
-  LOAD PRODUCT DETAILS
+  const [
+    quickOpen,
+    setQuickOpen,
+  ] = useState(false);
 
-  List API doesn't contain variations.
-  So this checks once whether sizes exist.
-  =========================================
-  */
+  /* =======================================================
+     LOAD FULL PRODUCT
+
+     Important because product list does not always contain
+     variation / size information.
+  ======================================================= */
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadDetails =
+    const loadProductDetails =
       async () => {
         try {
           setCheckingOptions(true);
@@ -52,17 +119,22 @@ export default function ProductCard({
               product.id
             );
 
-          if (cancelled) return;
+          if (!cancelled) {
+            const mapped =
+              toDetailProduct(
+                response
+              );
 
-          const mapped =
-            toDetailProduct(
-              response
+            setDetailProduct(
+              mapped
             );
-
-          setDetailProduct(
-            mapped
+          }
+        } catch (error) {
+          console.error(
+            "Unable to load product details:",
+            error
           );
-        } catch {
+
           if (!cancelled) {
             setDetailProduct(
               null
@@ -77,98 +149,140 @@ export default function ProductCard({
         }
       };
 
-    loadDetails();
+    loadProductDetails();
 
     return () => {
       cancelled = true;
     };
   }, [product.id]);
 
-  /*
-  =========================================
-  PRICE
-  =========================================
-  */
+  /* =======================================================
+     SIZE CHECK
 
-  const min =
+     More reliable check.
+
+     Product with actual size variation:
+     SELECT OPTIONS
+
+     Product without size:
+     ADD TO CART
+  ======================================================= */
+
+ const hasSizes =
+  String(
+    product?.productType || ""
+  ).toLowerCase() === "variable" ||
+  String(
+    detailProduct?.productType || ""
+  ).toLowerCase() === "variable" ||
+  Boolean(
+    detailProduct?.hasSizes
+  ) ||
+  (
+    Array.isArray(
+      detailProduct?.sizes
+    ) &&
+    detailProduct.sizes.length > 0
+  ) ||
+  (
+    Array.isArray(
+      detailProduct?.variations
+    ) &&
+    detailProduct.variations.some(
+      (variation) =>
+        String(
+          variation?.size || ""
+        ).trim() !== ""
+    )
+  );
+
+  /* =======================================================
+     PRICE
+
+     First use detailed product price.
+
+     If detail API has not loaded yet,
+     use list API price.
+
+     This fixes prices disappearing from cards.
+  ======================================================= */
+
+  const minPrice =
+    detailProduct?.minPrice ??
+    detailProduct?.price ??
     product.minPrice ??
-    product.price;
+    product.price ??
+    null;
 
-  const max =
+  const maxPrice =
+    detailProduct?.maxPrice ??
     product.maxPrice ??
-    min;
+    minPrice;
 
   const priceText =
-    min == null
+    minPrice == null
       ? ""
-      : max != null &&
-          Number(max) !==
-            Number(min)
-        ? `₹${Number(
-            min
-          ).toFixed(
-            Number(min) %
-              1 ===
-              0
-              ? 2
-              : 2
-          )} - ₹${Number(
-            max
-          ).toFixed(2)}`
-        : `₹${Number(
-            min
-          ).toFixed(2)}`;
+      : maxPrice != null &&
+        Number(maxPrice) !==
+          Number(minPrice)
+      ? `${money(minPrice)} – ${money(maxPrice)}`
+      : money(minPrice);
 
-  /*
-  =========================================
-  STOCK
-  =========================================
-  */
+  /* =======================================================
+     CATEGORY
+  ======================================================= */
+
+  const categoryLabel =
+    useMemo(
+      () =>
+        shortCategory(
+          detailProduct?.category ||
+            product.category ||
+            ""
+        ),
+      [
+        detailProduct?.category,
+        product.category,
+      ]
+    );
+
+  /* =======================================================
+     STOCK
+  ======================================================= */
 
   const isOutOfStock =
-    product.isOutOfStock ||
-    product.stockStatus ===
-      "outofstock" ||
-    detailProduct?.isOutOfStock;
+    Boolean(
+      detailProduct
+        ?.isOutOfStock
+    ) ||
+    Boolean(
+      product
+        ?.isOutOfStock
+    ) ||
+    product
+      ?.stockStatus ===
+      "outofstock";
 
-  /*
-  =========================================
-  HAS SIZES
-  =========================================
-  */
+  /* =======================================================
+     IMAGE
+  ======================================================= */
 
-  const hasSizes =
-    detailProduct?.hasSizes ===
-    true;
+  const productImage =
+    detailProduct?.image ||
+    product.image ||
+    "";
 
-  /*
-  =========================================
-  CARD CLICK
-  =========================================
-  */
+  /* =======================================================
+     DIRECT ADD TO CART
 
-  const openDetails = () => {
-    navigate(
-      `/products/${product.id}`
-    );
-  };
+     ONLY SIMPLE PRODUCT
+  ======================================================= */
 
-  /*
-  =========================================
-  ADD DIRECTLY TO CART
-
-  Only products WITHOUT sizes.
-  =========================================
-  */
-
-  const handleAddToCart =
-    async (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
+  const directAdd =
+    async () => {
       if (
-        isOutOfStock ||
-        adding
+        adding ||
+        isOutOfStock
       ) {
         return;
       }
@@ -180,10 +294,8 @@ export default function ProductCard({
           detailProduct;
 
         /*
-        In case details have
-        not loaded yet.
-        */
-
+         * Safety fallback.
+         */
         if (!current) {
           const response =
             await getProductById(
@@ -201,31 +313,68 @@ export default function ProductCard({
         }
 
         /*
-        If sizes exist,
-        don't add directly.
-        Go to Details page.
-        */
+         * Double-check sizes before
+         * directly adding.
+         */
+       const currentHasSizes =
+  String(
+    current?.productType || ""
+  ).toLowerCase() === "variable" ||
+  String(
+    product?.productType || ""
+  ).toLowerCase() === "variable" ||
+  Boolean(
+    current?.hasSizes
+  ) ||
+  (
+    Array.isArray(
+      current?.sizes
+    ) &&
+    current.sizes.length > 0
+  ) ||
+  (
+    Array.isArray(
+      current?.variations
+    ) &&
+    current.variations.some(
+      (variation) =>
+        String(
+          variation?.size || ""
+        ).trim() !== ""
+    )
+  );
 
+        /*
+         * If size exists,
+         * don't directly add.
+         *
+         * Open Quick View so
+         * customer can select size.
+         */
         if (
-          current.hasSizes
+          currentHasSizes
         ) {
-          navigate(
-            `/products/${product.id}`
+          setQuickOpen(
+            true
           );
 
           return;
         }
 
-        /*
-        NO SIZE PRODUCT
-        Direct cart add.
-        */
+        const cartPrice =
+          current?.price ??
+          current?.minPrice ??
+          product.price ??
+          product.minPrice;
 
-        addToCart(
+        /*
+         * Keep your existing
+         * CartContext flow.
+         */
+        await addToCart(
           current,
           "",
-          current.price ??
-            current.minPrice
+          cartPrice
         );
       } catch (error) {
         console.error(
@@ -233,252 +382,570 @@ export default function ProductCard({
           error
         );
       } finally {
-        setAdding(false);
+        setAdding(
+          false
+        );
       }
     };
 
-  /*
-  =========================================
-  SELECT OPTIONS
 
-  Size products → Details page
-  =========================================
-  */
+const productCategories =
+  Array.isArray(
+    detailProduct?.categories
+  )
+    ? detailProduct.categories
+    : [];
 
-  const handleSelectOptions =
-    (event) => {
-      event.preventDefault();
-      event.stopPropagation();
+/* =========================================================
+   PRODUCT DETAILS URL
 
-      navigate(
-        `/products/${product.id}`
-      );
-    };
+   IMPORTANT:
+   Use the page/category from which the product was opened.
+
+   Example:
+   Grade 1 & 2 collection
+   -> category = grade1-2
+
+   Girls category page
+   -> category = girls
+========================================================= */
+
+const productDetailsUrl =
+  categoryContext?.slug
+    ? `/products/${product.id}?category=${encodeURIComponent(
+        categoryContext.slug
+      )}`
+    : `/products/${product.id}`;
+
 
   return (
-    <article
-      onClick={openDetails}
-      className="
-        group
-        min-w-0
-        cursor-pointer
-        bg-white
-        text-center
-      "
-    >
-      {/* =========================
-          PRODUCT IMAGE
-      ========================== */}
+    <>
+      {/* =================================================
+          PRODUCT
 
-      <div
+          No white card background.
+          No card border.
+          No card shadow.
+      ================================================= */}
+
+      <article
         className="
-          relative
+          group/product
           flex
-          h-[205px]
-          items-center
-          justify-center
-          overflow-hidden
-          bg-white
-          sm:h-[250px]
-          md:h-[285px]
-          lg:h-[310px]
+          h-full
+          min-w-0
+          flex-col
         "
       >
-        {product.image && (
-          <img
-            src={product.image}
-            alt={product.name}
+        {/* =================================================
+            PRODUCT IMAGE
+        ================================================= */}
+
+        <Link
+          to={`/products/${product.id}`}
+          aria-label={`View ${product.name}`}
+          className="
+            block
+            w-full
+          "
+        >
+          <div
             className="
-              h-full
+              relative
+
+              flex
+              aspect-square
               w-full
-              object-contain
-              transition
-              duration-300
-              group-hover:scale-[1.02]
-            "
-          />
-        )}
 
-        {/* OUT OF STOCK */}
+              items-center
+              justify-center
 
-        {isOutOfStock && (
-          <span
-            className="
-              absolute
-              left-2
-              top-2
-              rounded-full
-              bg-[#9aa0a6]
-              px-2.5
-              py-1
-              text-[9px]
-              font-bold
-              uppercase
-              text-white
-              sm:left-3
-              sm:top-3
-              sm:text-[10px]
+              overflow-hidden
+
+              bg-white
             "
           >
-            Out of Stock
-          </span>
-        )}
-      </div>
+            {productImage ? (
+              <img
+                src={productImage}
+                alt={product.name}
+                className="
+                  h-full
+                  w-full
 
-      {/* =========================
-          PRODUCT CONTENT
-      ========================== */}
+                  object-contain
 
-      <div className="px-1 pb-7 pt-4">
+                  transition
+                  duration-300
 
-        {/* PRODUCT NAME */}
+                  group-hover/product:scale-[1.02]
+                "
+              />
+            ) : (
+              <div
+                className="
+                  flex
+                  h-full
+                  w-full
 
-        <h3
-          className="
-            line-clamp-2
-            min-h-[36px]
-            text-[13px]
-            font-medium
-            uppercase
-            leading-5
-            text-[#243346]
-            transition
-            group-hover:text-[#D9A537]
-            sm:text-sm
-          "
-        >
-          {product.name}
-        </h3>
+                  items-center
+                  justify-center
 
-        {/* PRICE */}
+                  text-sm
+                  text-slate-400
+                "
+              >
+                No image
+              </div>
+            )}
 
-        <p
-          className="
-            mt-1
-            text-sm
-            font-black
-            text-[#D9A537]
-            sm:text-[15px]
-          "
-        >
-          {priceText}
-        </p>
+            {isOutOfStock && (
+              <span
+                className="
+                  absolute
+                  left-3
+                  top-3
 
-        {/* SMALL LINE */}
+                  bg-[#243346]
+
+                  px-3
+                  py-1.5
+
+                  text-[10px]
+                  font-bold
+                  uppercase
+
+                  text-white
+                "
+              >
+                Out of Stock
+              </span>
+            )}
+          </div>
+        </Link>
+
+        {/* =================================================
+            PRODUCT DETAILS
+        ================================================= */}
 
         <div
           className="
-            mx-auto
-            mt-4
-            h-px
-            w-10
-            bg-slate-300
+            flex
+            flex-1
+            flex-col
+
+            px-1
+            pt-4
+
+            text-center
           "
-        />
+        >
+          {/* PRODUCT NAME */}
 
-        {/* =========================
-            ACTION
-        ========================== */}
+         <Link
+  to={`/products/${product.id}`}
+  className="
+    line-clamp-2
+    text-[14px]
+    font-extrabold
+    leading-[21px]
+    text-[#243346]
+    transition
+    hover:text-[#D9A537]
+    sm:text-[15px]
+  "
+>
+  {product.name}
+</Link>
 
-        <div className="mt-4">
+          {/* CATEGORY */}
+{categoryLabel && (
+  <p
+    className="
+      mt-1
+      text-[16px]
+      font-normal
+      text-slate-500
+    "
+  >
+    {categoryLabel}
+  </p>
+)}
 
-          {checkingOptions ? (
-            <span
-              className="
-                text-[11px]
-                font-black
-                uppercase
-                text-slate-400
-              "
-            >
-              Loading...
-            </span>
-          ) : isOutOfStock ? (
-            <span
-              className="
-                text-[11px]
-                font-black
-                uppercase
-                text-slate-400
-              "
-            >
-              Out of Stock
-            </span>
-          ) : hasSizes ? (
-            /*
-            SIZE PRODUCT
-            */
+          {/* =================================================
+              PRICE
+          ================================================= */}
+          {showPrice && priceText && (
+  <p
+    className="
+      mt-1.5
+      text-[14px]
+      font-extrabold
+      text-[#D9A537]
+    "
+  >
+    {priceText}
+  </p>
+)}
+
+          {/* =================================================
+              BUTTONS
+
+              SIDE BY SIDE
+          ================================================= */}
+
+          <div
+            className="
+              mt-auto
+
+              grid
+              grid-cols-2
+              gap-2
+
+              pt-4
+            "
+          >
+            {/* ===============================================
+                FIRST BUTTON
+            =============================================== */}
+
+            {checkingOptions ? (
+              <button
+                type="button"
+                disabled
+                className="
+                  flex
+                  min-h-[46px]
+                  w-full
+
+                  items-center
+                  justify-center
+
+                  bg-[#D9A537]
+
+                  px-2
+                  py-2
+
+                  text-center
+                  text-[10px]
+                  font-bold
+                  uppercase
+                  leading-4
+
+                  text-[#243346]
+
+                  opacity-60
+
+                  sm:text-[11px]
+                "
+              >
+                Loading...
+              </button>
+            ) : isOutOfStock ? (
+              <button
+                type="button"
+                disabled
+                className="
+                  flex
+                  min-h-[46px]
+                  w-full
+
+                  items-center
+                  justify-center
+
+                  bg-slate-300
+
+                  px-2
+                  py-2
+
+                  text-center
+                  text-[10px]
+                  font-bold
+                  uppercase
+
+                  text-slate-500
+
+                  sm:text-[11px]
+                "
+              >
+                Out of Stock
+              </button>
+            // ) : hasSizes ? (
+
+            //   <button
+            //     type="button"
+            //     onClick={() =>
+            //       setQuickOpen(
+            //         true
+            //       )
+            //     }
+            //     className="
+            //       flex
+            //       min-h-[46px]
+            //       w-full
+
+            //       items-center
+            //       justify-center
+
+            //       bg-[#D9A537]
+
+            //       px-2
+            //       py-2
+
+            //       text-center
+            //       text-[10px]
+            //       font-bold
+            //       uppercase
+            //       leading-4
+
+            //       text-[#243346]
+
+            //       transition
+
+            //       hover:bg-[#c6972f]
+
+            //       sm:text-[11px]
+            //     "
+            //   >
+            //     Select Options
+            //   </button>
+            // ) : (
+            ) : hasSizes ? (
+  /* =============================================
+     PRODUCT HAS SIZE
+
+     SELECT OPTIONS -> PRODUCT DETAILS PAGE
+  ============================================= */
+
+  <Link
+    to={`/products/${product.id}`}
+    className="
+      flex
+      min-h-[46px]
+      w-full
+
+      items-center
+      justify-center
+
+      bg-[#D9A537]
+
+      px-2
+      py-2
+
+      text-center
+      text-[14px]
+      font-bold
+      uppercase
+      leading-4
+
+      text-[#243346]
+
+      transition
+
+      hover:bg-[#c6972f]
+
+      sm:text-[14px]
+    "
+  >
+    Select Options
+  </Link>
+) : (
+              /* =============================================
+                 PRODUCT DOES NOT HAVE SIZE
+
+                 ADD TO CART
+              ============================================= */
+
+              <button
+                type="button"
+                onClick={
+                  directAdd
+                }
+                disabled={
+                  adding
+                }
+                className="
+                  flex
+                  min-h-[46px]
+                  w-full
+
+                  items-center
+                  justify-center
+
+                  bg-[#D9A537]
+
+                  px-2
+                  py-2
+
+                  text-center
+                  text-[10px]
+                  font-bold
+                  uppercase
+                  leading-4
+
+                  text-[#243346]
+
+                  transition
+
+                  hover:bg-[#c6972f]
+
+                  disabled:cursor-not-allowed
+                  disabled:opacity-60
+
+                  sm:text-[11px]
+                "
+              >
+                {adding
+                  ? "Adding..."
+                  : "Add to Cart"}
+              </button>
+            )}
+
+            {/* ===============================================
+                QUICK VIEW
+            =============================================== */}
+
             <button
               type="button"
-              onClick={
-                handleSelectOptions
+              onClick={() =>
+                setQuickOpen(
+                  true
+                )
               }
               className="
-                text-[11px]
-                font-black
+                flex
+                min-h-[46px]
+                w-full
+
+                items-center
+                justify-center
+
+                border
+                border-[#243346]
+
+                bg-[#243346]
+
+                px-2
+                py-2
+
+                text-center
+                text-[10px]
+                font-bold
                 uppercase
-                tracking-wide
-                text-[#243346]
+                leading-4
+
+                text-white
+
                 transition
-                hover:text-[#D9A537]
-                sm:text-xs
+
+                hover:border-[#D9A537]
+                hover:bg-[#D9A537]
+                hover:text-[#243346]
+
+                sm:text-[11px]
               "
             >
-              Select Options »
+              Quick View
             </button>
-          ) : (
-            /*
-            NO SIZE PRODUCT
-            */
-            <button
-              type="button"
-              onClick={
-                handleAddToCart
-              }
-              disabled={adding}
-              className="
-                text-[11px]
-                font-black
-                uppercase
-                tracking-wide
-                text-[#243346]
-                transition
-                hover:text-[#D9A537]
-                disabled:cursor-not-allowed
-                disabled:opacity-60
-                sm:text-xs
-              "
-            >
-              {adding
-                ? "Adding..."
-                : "Add to Cart »"}
-            </button>
-          )}
+          </div>
         </div>
-      </div>
-    </article>
+      </article>
+
+      {/* =================================================
+          QUICK VIEW
+      ================================================= */}
+
+      <QuickViewModal
+        product={product}
+        open={quickOpen}
+        onClose={() =>
+          setQuickOpen(false)
+        }
+      />
+    </>
   );
 }
 
 
 
 
-// import { useEffect, useState } from "react";
-// import { Link, useNavigate } from "react-router-dom";
 
-// import { useCart } from "../context/CartContext";
+// import {
+//   useEffect,
+//   useMemo,
+//   useState,
+// } from "react";
 
-// import { getProductById } from "../services/productService";
+// import {
+//   Link,
+// } from "react-router-dom";
 
-// import { toDetailProduct } from "../utils/productAdapter";
+// import {
+//   useCart,
+// } from "../context/CartContext";
+
+// import {
+//   getProductById,
+// } from "../services/productService";
+
+// import {
+//   toDetailProduct,
+// } from "../utils/productAdapter";
+
+// import QuickViewModal
+//   from "./QuickViewModal";
+
+// /* =========================================================
+//    MONEY
+// ========================================================= */
+
+// function money(value) {
+//   if (
+//     value == null ||
+//     value === "" ||
+//     Number.isNaN(Number(value))
+//   ) {
+//     return "";
+//   }
+
+//   return `₹${Number(value).toFixed(2)}`;
+// }
+
+// /* =========================================================
+//    CATEGORY
+
+//    From:
+//    Boys, Grade 1-2, Nursery...
+
+//    Display:
+//    Boys
+// ========================================================= */
+
+// function shortCategory(value = "") {
+//   const parts = String(value)
+//     .split(",")
+//     .map((item) => item.trim())
+//     .filter(Boolean);
+
+//   return (
+//     parts.find((item) =>
+//       /^(boys|girls|boys\/girls)$/i.test(item)
+//     ) ||
+//     parts[0] ||
+//     ""
+//   );
+// }
+
+// /* =========================================================
+//    PRODUCT CARD
+// ========================================================= */
 
 // export default function ProductCard({
-//   product,
+//   product,showPrice = true,
 // }) {
-//   const navigate = useNavigate();
-
-//   const { addToCart } =
-//     useCart();
+//   const {
+//     addToCart,
+//   } = useCart();
 
 //   const [
 //     detailProduct,
@@ -495,19 +962,22 @@ export default function ProductCard({
 //     setAdding,
 //   ] = useState(false);
 
-//   /*
-//   =========================================
-//   LOAD PRODUCT DETAILS
+//   const [
+//     quickOpen,
+//     setQuickOpen,
+//   ] = useState(false);
 
-//   List API doesn't contain variations.
-//   So this checks once whether sizes exist.
-//   =========================================
-//   */
+//   /* =======================================================
+//      LOAD FULL PRODUCT
+
+//      Important because product list does not always contain
+//      variation / size information.
+//   ======================================================= */
 
 //   useEffect(() => {
 //     let cancelled = false;
 
-//     const loadDetails =
+//     const loadProductDetails =
 //       async () => {
 //         try {
 //           setCheckingOptions(true);
@@ -517,17 +987,22 @@ export default function ProductCard({
 //               product.id
 //             );
 
-//           if (cancelled) return;
+//           if (!cancelled) {
+//             const mapped =
+//               toDetailProduct(
+//                 response
+//               );
 
-//           const mapped =
-//             toDetailProduct(
-//               response
+//             setDetailProduct(
+//               mapped
 //             );
-
-//           setDetailProduct(
-//             mapped
+//           }
+//         } catch (error) {
+//           console.error(
+//             "Unable to load product details:",
+//             error
 //           );
-//         } catch {
+
 //           if (!cancelled) {
 //             setDetailProduct(
 //               null
@@ -542,98 +1017,140 @@ export default function ProductCard({
 //         }
 //       };
 
-//     loadDetails();
+//     loadProductDetails();
 
 //     return () => {
 //       cancelled = true;
 //     };
 //   }, [product.id]);
 
-//   /*
-//   =========================================
-//   PRICE
-//   =========================================
-//   */
+//   /* =======================================================
+//      SIZE CHECK
 
-//   const min =
+//      More reliable check.
+
+//      Product with actual size variation:
+//      SELECT OPTIONS
+
+//      Product without size:
+//      ADD TO CART
+//   ======================================================= */
+
+//  const hasSizes =
+//   String(
+//     product?.productType || ""
+//   ).toLowerCase() === "variable" ||
+//   String(
+//     detailProduct?.productType || ""
+//   ).toLowerCase() === "variable" ||
+//   Boolean(
+//     detailProduct?.hasSizes
+//   ) ||
+//   (
+//     Array.isArray(
+//       detailProduct?.sizes
+//     ) &&
+//     detailProduct.sizes.length > 0
+//   ) ||
+//   (
+//     Array.isArray(
+//       detailProduct?.variations
+//     ) &&
+//     detailProduct.variations.some(
+//       (variation) =>
+//         String(
+//           variation?.size || ""
+//         ).trim() !== ""
+//     )
+//   );
+
+//   /* =======================================================
+//      PRICE
+
+//      First use detailed product price.
+
+//      If detail API has not loaded yet,
+//      use list API price.
+
+//      This fixes prices disappearing from cards.
+//   ======================================================= */
+
+//   const minPrice =
+//     detailProduct?.minPrice ??
+//     detailProduct?.price ??
 //     product.minPrice ??
-//     product.price;
+//     product.price ??
+//     null;
 
-//   const max =
+//   const maxPrice =
+//     detailProduct?.maxPrice ??
 //     product.maxPrice ??
-//     min;
+//     minPrice;
 
 //   const priceText =
-//     min == null
+//     minPrice == null
 //       ? ""
-//       : max != null &&
-//           Number(max) !==
-//             Number(min)
-//         ? `₹${Number(
-//             min
-//           ).toFixed(
-//             Number(min) %
-//               1 ===
-//               0
-//               ? 2
-//               : 2
-//           )} - ₹${Number(
-//             max
-//           ).toFixed(2)}`
-//         : `₹${Number(
-//             min
-//           ).toFixed(2)}`;
+//       : maxPrice != null &&
+//         Number(maxPrice) !==
+//           Number(minPrice)
+//       ? `${money(minPrice)} – ${money(maxPrice)}`
+//       : money(minPrice);
 
-//   /*
-//   =========================================
-//   STOCK
-//   =========================================
-//   */
+//   /* =======================================================
+//      CATEGORY
+//   ======================================================= */
+
+//   const categoryLabel =
+//     useMemo(
+//       () =>
+//         shortCategory(
+//           detailProduct?.category ||
+//             product.category ||
+//             ""
+//         ),
+//       [
+//         detailProduct?.category,
+//         product.category,
+//       ]
+//     );
+
+//   /* =======================================================
+//      STOCK
+//   ======================================================= */
 
 //   const isOutOfStock =
-//     product.isOutOfStock ||
-//     product.stockStatus ===
-//       "outofstock" ||
-//     detailProduct?.isOutOfStock;
+//     Boolean(
+//       detailProduct
+//         ?.isOutOfStock
+//     ) ||
+//     Boolean(
+//       product
+//         ?.isOutOfStock
+//     ) ||
+//     product
+//       ?.stockStatus ===
+//       "outofstock";
 
-//   /*
-//   =========================================
-//   HAS SIZES
-//   =========================================
-//   */
+//   /* =======================================================
+//      IMAGE
+//   ======================================================= */
 
-//   const hasSizes =
-//     detailProduct?.hasSizes ===
-//     true;
+//   const productImage =
+//     detailProduct?.image ||
+//     product.image ||
+//     "";
 
-//   /*
-//   =========================================
-//   CARD CLICK
-//   =========================================
-//   */
+//   /* =======================================================
+//      DIRECT ADD TO CART
 
-//   const openDetails = () => {
-//     navigate(
-//       `/products/${product.id}`
-//     );
-//   };
+//      ONLY SIMPLE PRODUCT
+//   ======================================================= */
 
-//   /*
-//   =========================================
-//   ADD DIRECTLY TO CART
-
-//   Only products WITHOUT sizes.
-//   =========================================
-//   */
-
-//   const handleAddToCart =
-//     async (event) => {
-//       event.preventDefault();
-//       event.stopPropagation();
-
+//   const directAdd =
+//     async () => {
 //       if (
-//         isOutOfStock ||
-//         adding
+//         adding ||
+//         isOutOfStock
 //       ) {
 //         return;
 //       }
@@ -645,10 +1162,8 @@ export default function ProductCard({
 //           detailProduct;
 
 //         /*
-//         In case details have
-//         not loaded yet.
-//         */
-
+//          * Safety fallback.
+//          */
 //         if (!current) {
 //           const response =
 //             await getProductById(
@@ -666,31 +1181,68 @@ export default function ProductCard({
 //         }
 
 //         /*
-//         If sizes exist,
-//         don't add directly.
-//         Go to Details page.
-//         */
+//          * Double-check sizes before
+//          * directly adding.
+//          */
+//        const currentHasSizes =
+//   String(
+//     current?.productType || ""
+//   ).toLowerCase() === "variable" ||
+//   String(
+//     product?.productType || ""
+//   ).toLowerCase() === "variable" ||
+//   Boolean(
+//     current?.hasSizes
+//   ) ||
+//   (
+//     Array.isArray(
+//       current?.sizes
+//     ) &&
+//     current.sizes.length > 0
+//   ) ||
+//   (
+//     Array.isArray(
+//       current?.variations
+//     ) &&
+//     current.variations.some(
+//       (variation) =>
+//         String(
+//           variation?.size || ""
+//         ).trim() !== ""
+//     )
+//   );
 
+//         /*
+//          * If size exists,
+//          * don't directly add.
+//          *
+//          * Open Quick View so
+//          * customer can select size.
+//          */
 //         if (
-//           current.hasSizes
+//           currentHasSizes
 //         ) {
-//           navigate(
-//             `/products/${product.id}`
+//           setQuickOpen(
+//             true
 //           );
 
 //           return;
 //         }
 
-//         /*
-//         NO SIZE PRODUCT
-//         Direct cart add.
-//         */
+//         const cartPrice =
+//           current?.price ??
+//           current?.minPrice ??
+//           product.price ??
+//           product.minPrice;
 
-//         addToCart(
+//         /*
+//          * Keep your existing
+//          * CartContext flow.
+//          */
+//         await addToCart(
 //           current,
 //           "",
-//           current.price ??
-//             current.minPrice
+//           cartPrice
 //         );
 //       } catch (error) {
 //         console.error(
@@ -698,230 +1250,459 @@ export default function ProductCard({
 //           error
 //         );
 //       } finally {
-//         setAdding(false);
+//         setAdding(
+//           false
+//         );
 //       }
 //     };
 
-//   /*
-//   =========================================
-//   SELECT OPTIONS
-
-//   Size products → Details page
-//   =========================================
-//   */
-
-//   const handleSelectOptions =
-//     (event) => {
-//       event.preventDefault();
-//       event.stopPropagation();
-
-//       navigate(
-//         `/products/${product.id}`
-//       );
-//     };
-
 //   return (
-//     <article
-//       onClick={openDetails}
-//       className="
-//         group
-//         min-w-0
-//         cursor-pointer
-//         bg-white
-//         text-center
-//       "
-//     >
-//       {/* =========================
-//           PRODUCT IMAGE
-//       ========================== */}
+//     <>
+//       {/* =================================================
+//           PRODUCT
 
-//       <div
+//           No white card background.
+//           No card border.
+//           No card shadow.
+//       ================================================= */}
+
+//       <article
 //         className="
-//           relative
+//           group/product
 //           flex
-//           h-[205px]
-//           items-center
-//           justify-center
-//           overflow-hidden
-//           bg-white
-//           sm:h-[250px]
-//           md:h-[285px]
-//           lg:h-[310px]
+//           h-full
+//           min-w-0
+//           flex-col
 //         "
 //       >
-//         {product.image && (
-//           <img
-//             src={product.image}
-//             alt={product.name}
+//         {/* =================================================
+//             PRODUCT IMAGE
+//         ================================================= */}
+
+//         <Link
+//           to={`/products/${product.id}`}
+//           aria-label={`View ${product.name}`}
+//           className="
+//             block
+//             w-full
+//           "
+//         >
+//           <div
 //             className="
-//               h-full
+//               relative
+
+//               flex
+//               aspect-square
 //               w-full
-//               object-contain
-//               transition
-//               duration-300
-//               group-hover:scale-[1.02]
-//             "
-//           />
-//         )}
 
-//         {/* OUT OF STOCK */}
+//               items-center
+//               justify-center
 
-//         {isOutOfStock && (
-//           <span
-//             className="
-//               absolute
-//               left-2
-//               top-2
-//               rounded-full
-//               bg-[#9aa0a6]
-//               px-2.5
-//               py-1
-//               text-[9px]
-//               font-bold
-//               uppercase
-//               text-white
-//               sm:left-3
-//               sm:top-3
-//               sm:text-[10px]
+//               overflow-hidden
+
+//               bg-white
 //             "
 //           >
-//             Out of Stock
-//           </span>
-//         )}
-//       </div>
+//             {productImage ? (
+//               <img
+//                 src={productImage}
+//                 alt={product.name}
+//                 className="
+//                   h-full
+//                   w-full
 
-//       {/* =========================
-//           PRODUCT CONTENT
-//       ========================== */}
+//                   object-contain
 
-//       <div className="px-1 pb-7 pt-4">
+//                   transition
+//                   duration-300
 
-//         {/* PRODUCT NAME */}
+//                   group-hover/product:scale-[1.02]
+//                 "
+//               />
+//             ) : (
+//               <div
+//                 className="
+//                   flex
+//                   h-full
+//                   w-full
 
-//         <h3
-//           className="
-//             line-clamp-2
-//             min-h-[36px]
-//             text-[13px]
-//             font-medium
-//             uppercase
-//             leading-5
-//             text-[#243346]
-//             transition
-//             group-hover:text-[#D9A537]
-//             sm:text-sm
-//           "
-//         >
-//           {product.name}
-//         </h3>
+//                   items-center
+//                   justify-center
 
-//         {/* PRICE */}
+//                   text-sm
+//                   text-slate-400
+//                 "
+//               >
+//                 No image
+//               </div>
+//             )}
 
-//         <p
-//           className="
-//             mt-1
-//             text-sm
-//             font-black
-//             text-[#D9A537]
-//             sm:text-[15px]
-//           "
-//         >
-//           {priceText}
-//         </p>
+//             {isOutOfStock && (
+//               <span
+//                 className="
+//                   absolute
+//                   left-3
+//                   top-3
 
-//         {/* SMALL LINE */}
+//                   bg-[#243346]
+
+//                   px-3
+//                   py-1.5
+
+//                   text-[10px]
+//                   font-bold
+//                   uppercase
+
+//                   text-white
+//                 "
+//               >
+//                 Out of Stock
+//               </span>
+//             )}
+//           </div>
+//         </Link>
+
+//         {/* =================================================
+//             PRODUCT DETAILS
+//         ================================================= */}
 
 //         <div
 //           className="
-//             mx-auto
-//             mt-4
-//             h-px
-//             w-10
-//             bg-slate-300
+//             flex
+//             flex-1
+//             flex-col
+
+//             px-1
+//             pt-4
+
+//             text-center
 //           "
-//         />
+//         >
+//           {/* PRODUCT NAME */}
 
-//         {/* =========================
-//             ACTION
-//         ========================== */}
+//          <Link
+//   to={`/products/${product.id}`}
+//   className="
+//     line-clamp-2
+//     text-[14px]
+//     font-extrabold
+//     leading-[21px]
+//     text-[#243346]
+//     transition
+//     hover:text-[#D9A537]
+//     sm:text-[15px]
+//   "
+// >
+//   {product.name}
+// </Link>
 
-//         <div className="mt-4">
+//           {/* CATEGORY */}
+// {categoryLabel && (
+//   <p
+//     className="
+//       mt-1
+//       text-[16px]
+//       font-normal
+//       text-slate-500
+//     "
+//   >
+//     {categoryLabel}
+//   </p>
+// )}
 
-//           {checkingOptions ? (
-//             <span
-//               className="
-//                 text-[11px]
-//                 font-black
-//                 uppercase
-//                 text-slate-400
-//               "
-//             >
-//               Loading...
-//             </span>
-//           ) : isOutOfStock ? (
-//             <span
-//               className="
-//                 text-[11px]
-//                 font-black
-//                 uppercase
-//                 text-slate-400
-//               "
-//             >
-//               Out of Stock
-//             </span>
-//           ) : hasSizes ? (
-//             /*
-//             SIZE PRODUCT
-//             */
+//           {/* =================================================
+//               PRICE
+//           ================================================= */}
+//           {showPrice && priceText && (
+//   <p
+//     className="
+//       mt-1.5
+//       text-[14px]
+//       font-extrabold
+//       text-[#D9A537]
+//     "
+//   >
+//     {priceText}
+//   </p>
+// )}
+
+//           {/* =================================================
+//               BUTTONS
+
+//               SIDE BY SIDE
+//           ================================================= */}
+
+//           <div
+//             className="
+//               mt-auto
+
+//               grid
+//               grid-cols-2
+//               gap-2
+
+//               pt-4
+//             "
+//           >
+//             {/* ===============================================
+//                 FIRST BUTTON
+//             =============================================== */}
+
+//             {checkingOptions ? (
+//               <button
+//                 type="button"
+//                 disabled
+//                 className="
+//                   flex
+//                   min-h-[46px]
+//                   w-full
+
+//                   items-center
+//                   justify-center
+
+//                   bg-[#D9A537]
+
+//                   px-2
+//                   py-2
+
+//                   text-center
+//                   text-[10px]
+//                   font-bold
+//                   uppercase
+//                   leading-4
+
+//                   text-[#243346]
+
+//                   opacity-60
+
+//                   sm:text-[11px]
+//                 "
+//               >
+//                 Loading...
+//               </button>
+//             ) : isOutOfStock ? (
+//               <button
+//                 type="button"
+//                 disabled
+//                 className="
+//                   flex
+//                   min-h-[46px]
+//                   w-full
+
+//                   items-center
+//                   justify-center
+
+//                   bg-slate-300
+
+//                   px-2
+//                   py-2
+
+//                   text-center
+//                   text-[10px]
+//                   font-bold
+//                   uppercase
+
+//                   text-slate-500
+
+//                   sm:text-[11px]
+//                 "
+//               >
+//                 Out of Stock
+//               </button>
+//             // ) : hasSizes ? (
+
+//             //   <button
+//             //     type="button"
+//             //     onClick={() =>
+//             //       setQuickOpen(
+//             //         true
+//             //       )
+//             //     }
+//             //     className="
+//             //       flex
+//             //       min-h-[46px]
+//             //       w-full
+
+//             //       items-center
+//             //       justify-center
+
+//             //       bg-[#D9A537]
+
+//             //       px-2
+//             //       py-2
+
+//             //       text-center
+//             //       text-[10px]
+//             //       font-bold
+//             //       uppercase
+//             //       leading-4
+
+//             //       text-[#243346]
+
+//             //       transition
+
+//             //       hover:bg-[#c6972f]
+
+//             //       sm:text-[11px]
+//             //     "
+//             //   >
+//             //     Select Options
+//             //   </button>
+//             // ) : (
+//             ) : hasSizes ? (
+//   /* =============================================
+//      PRODUCT HAS SIZE
+
+//      SELECT OPTIONS -> PRODUCT DETAILS PAGE
+//   ============================================= */
+
+//   <Link
+//     to={`/products/${product.id}`}
+//     className="
+//       flex
+//       min-h-[46px]
+//       w-full
+
+//       items-center
+//       justify-center
+
+//       bg-[#D9A537]
+
+//       px-2
+//       py-2
+
+//       text-center
+//       text-[14px]
+//       font-bold
+//       uppercase
+//       leading-4
+
+//       text-[#243346]
+
+//       transition
+
+//       hover:bg-[#c6972f]
+
+//       sm:text-[14px]
+//     "
+//   >
+//     Select Options
+//   </Link>
+// ) : (
+//               /* =============================================
+//                  PRODUCT DOES NOT HAVE SIZE
+
+//                  ADD TO CART
+//               ============================================= */
+
+//               <button
+//                 type="button"
+//                 onClick={
+//                   directAdd
+//                 }
+//                 disabled={
+//                   adding
+//                 }
+//                 className="
+//                   flex
+//                   min-h-[46px]
+//                   w-full
+
+//                   items-center
+//                   justify-center
+
+//                   bg-[#D9A537]
+
+//                   px-2
+//                   py-2
+
+//                   text-center
+//                   text-[10px]
+//                   font-bold
+//                   uppercase
+//                   leading-4
+
+//                   text-[#243346]
+
+//                   transition
+
+//                   hover:bg-[#c6972f]
+
+//                   disabled:cursor-not-allowed
+//                   disabled:opacity-60
+
+//                   sm:text-[11px]
+//                 "
+//               >
+//                 {adding
+//                   ? "Adding..."
+//                   : "Add to Cart"}
+//               </button>
+//             )}
+
+//             {/* ===============================================
+//                 QUICK VIEW
+//             =============================================== */}
+
 //             <button
 //               type="button"
-//               onClick={
-//                 handleSelectOptions
+//               onClick={() =>
+//                 setQuickOpen(
+//                   true
+//                 )
 //               }
 //               className="
-//                 text-[11px]
-//                 font-black
+//                 flex
+//                 min-h-[46px]
+//                 w-full
+
+//                 items-center
+//                 justify-center
+
+//                 border
+//                 border-[#243346]
+
+//                 bg-[#243346]
+
+//                 px-2
+//                 py-2
+
+//                 text-center
+//                 text-[10px]
+//                 font-bold
 //                 uppercase
-//                 tracking-wide
-//                 text-[#243346]
+//                 leading-4
+
+//                 text-white
+
 //                 transition
-//                 hover:text-[#D9A537]
-//                 sm:text-xs
+
+//                 hover:border-[#D9A537]
+//                 hover:bg-[#D9A537]
+//                 hover:text-[#243346]
+
+//                 sm:text-[11px]
 //               "
 //             >
-//               Select Options »
+//               Quick View
 //             </button>
-//           ) : (
-//             /*
-//             NO SIZE PRODUCT
-//             */
-//             <button
-//               type="button"
-//               onClick={
-//                 handleAddToCart
-//               }
-//               disabled={adding}
-//               className="
-//                 text-[11px]
-//                 font-black
-//                 uppercase
-//                 tracking-wide
-//                 text-[#243346]
-//                 transition
-//                 hover:text-[#D9A537]
-//                 disabled:cursor-not-allowed
-//                 disabled:opacity-60
-//                 sm:text-xs
-//               "
-//             >
-//               {adding
-//                 ? "Adding..."
-//                 : "Add to Cart »"}
-//             </button>
-//           )}
+//           </div>
 //         </div>
-//       </div>
-//     </article>
+//       </article>
+
+//       {/* =================================================
+//           QUICK VIEW
+//       ================================================= */}
+
+//       <QuickViewModal
+//         product={product}
+//         open={quickOpen}
+//         onClose={() =>
+//           setQuickOpen(false)
+//         }
+//       />
+//     </>
 //   );
 // }
+
+
 

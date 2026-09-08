@@ -11,6 +11,7 @@ import {
   Link,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 
 import {
@@ -39,6 +40,13 @@ export default function ProductDetails({
   const { id } = useParams();
 
   const navigate = useNavigate();
+
+  const [searchParams] =
+  useSearchParams();
+
+const breadcrumbCategorySlug =
+  searchParams.get("category") ||
+  "";
 
   const { addToCart } = useCart();
 
@@ -256,6 +264,33 @@ export default function ProductDetails({
       ? `₹${displayedPrice}`
       : "";
 
+
+  /* =========================================================
+   BREADCRUMB CATEGORY
+
+   Use category passed from previous page first.
+   Do NOT automatically prefer Boys/Girls.
+========================================================= */
+
+const productCategories =
+  Array.isArray(
+    product?.categories
+  )
+    ? product.categories
+    : [];
+
+const breadcrumbCategory =
+  productCategories.find(
+    (category) =>
+      String(
+        category?.slug || ""
+      ).toLowerCase() ===
+      String(
+        breadcrumbCategorySlug || ""
+      ).toLowerCase()
+  ) ||
+  productCategories[0] ||
+  null;
   /* =========================================
      ADD PRODUCT TO CART
   ========================================= */
@@ -374,40 +409,122 @@ export default function ProductDetails({
     }
   };
 
+
+  const categoryText =
+  Array.isArray(
+    product?.categories
+  ) &&
+  product.categories.length > 0
+    ? product.categories
+        .map(
+          (item) =>
+            item?.name || ""
+        )
+        .filter(Boolean)
+        .join(", ")
+    : product?.category ||
+      "";
+
+const tagText =
+  Array.isArray(
+    product?.tags
+  )
+    ? product.tags
+        .map((item) => {
+          if (
+            typeof item ===
+            "string"
+          ) {
+            return item;
+          }
+
+          return (
+            item?.name ||
+            item?.slug ||
+            ""
+          );
+        })
+        .filter(Boolean)
+        .join(", ")
+    : "";
+
   return (
     <main className="bg-white">
-<div className="container-site pt-8 sm:pt-10 lg:pt-12">
+      <div
+  className="
+    mx-auto
+    w-full
+    max-w-[1480px]
+    px-4
+    pt-8
 
-  <div className="flex flex-wrap items-center gap-1.5 text-sm">
+    sm:px-6
+    sm:pt-10
 
+    lg:px-8
+    lg:pt-12
+  "
+>
+  <div
+    className="
+      flex
+      flex-wrap
+      items-center
+      gap-1.5
+      text-sm
+    "
+  >
     <Link
       to="/"
-      className="text-slate-400 transition hover:text-[#D9A537]"
+      className="
+        text-slate-400
+        transition
+        hover:text-[#D9A537]
+      "
     >
       Home
     </Link>
 
-    <span className="text-slate-400">
-      ›
-    </span>
+    {breadcrumbCategory && (
+      <>
+        <span
+          className="
+            text-slate-400
+          "
+        >
+          ›
+        </span>
 
-    <Link
-      to="/collections"
-      className="text-slate-400 transition hover:text-[#D9A537]"
+        <Link
+          to={`/category/${breadcrumbCategory.slug}`}
+          className="
+            text-slate-400
+            transition
+            hover:text-[#D9A537]
+          "
+        >
+          {breadcrumbCategory.name}
+        </Link>
+      </>
+    )}
+
+    <span
+      className="
+        text-slate-400
+      "
     >
-      Uniforms
-    </Link>
-
-    <span className="text-slate-400">
       ›
     </span>
 
-    <span className="font-medium text-[#243346]">
+    <span
+      className="
+        font-medium
+        text-[#243346]
+      "
+    >
       {product.name}
     </span>
-
   </div>
-
 </div>
 
       {/* =====================================
@@ -415,7 +532,25 @@ export default function ProductDetails({
       ===================================== */}
 
       {/* <div className="container-site py-7 sm:py-10 lg:py-12"> */}
-      <div className="container-site pb-10 pt-6 sm:pb-12 sm:pt-7 lg:pb-14 lg:pt-8">
+      {/* <div className="container-site pb-10 pt-6 sm:pb-12 sm:pt-7 lg:pb-14 lg:pt-8"> */}
+      <div
+  className="
+    mx-auto
+    w-full
+    max-w-[1480px]
+    px-4
+    pb-10
+    pt-6
+
+    sm:px-6
+    sm:pb-12
+    sm:pt-7
+
+    lg:px-8
+    lg:pb-14
+    lg:pt-8
+  "
+>
 
         <Link
           to="/"
@@ -498,9 +633,22 @@ export default function ProductDetails({
 
           <div>
 
-            {product.category && (
+            {/* {product.category && (
               <p className="text-xs font-extrabold uppercase tracking-[.18em] text-[#D9A537]">
                 {product.category}
+              </p>
+            )} */}
+            {categoryText && (
+              <p
+                className="
+                  text-xs
+                  font-extrabold
+                  uppercase
+                  tracking-[.18em]
+                  text-[#D9A537]
+                "
+              >
+                {categoryText}
               </p>
             )}
 
@@ -741,6 +889,38 @@ export default function ProductDetails({
 
                 </div>
 
+                  {/* TAGS */}
+
+                  {tagText && (
+                    <div
+                      className="
+                        mt-2
+                        flex
+                        flex-wrap
+                        items-start
+                        gap-2
+                        text-sm
+                      "
+                    >
+                      <span
+                        className="
+                          font-extrabold
+                          text-[#243346]
+                        "
+                      >
+                        Tags:
+                      </span>
+
+                      <span
+                        className="
+                          text-slate-600
+                        "
+                      >
+                        {tagText}
+                      </span>
+                    </div>
+                  )}
+
                 <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
 
                   <span className="font-extrabold text-[#243346]">
@@ -773,7 +953,19 @@ export default function ProductDetails({
       {product.sizes?.length > 0 && (
         <section className="bg-white pb-8 sm:pb-10">
 
-          <div className="container-site">
+          {/* <div className="container-site"> */}
+          <div
+  className="
+    mx-auto
+    w-full
+    max-w-[1480px]
+    px-4
+
+    sm:px-6
+
+    lg:px-8
+  "
+>
 
             {/* TITLE WITH LEFT + RIGHT LINES */}
 
@@ -865,7 +1057,19 @@ export default function ProductDetails({
       {related.length > 0 && (
         <section className="bg-white py-12 sm:py-16">
 
-          <div className="container-site">
+          {/* <div className="container-site"> */}
+          <div
+  className="
+    mx-auto
+    w-full
+    max-w-[1480px]
+    px-4
+
+    sm:px-6
+
+    lg:px-8
+  "
+>
 
             {/* CENTER HEADING */}
 
@@ -1309,9 +1513,63 @@ export default function ProductDetails({
 //     }
 //   };
 
+
+//   const categoryText =
+//   Array.isArray(
+//     product?.categories
+//   ) &&
+//   product.categories.length > 0
+//     ? product.categories
+//         .map(
+//           (item) =>
+//             item?.name || ""
+//         )
+//         .filter(Boolean)
+//         .join(", ")
+//     : product?.category ||
+//       "";
+
+// const tagText =
+//   Array.isArray(
+//     product?.tags
+//   )
+//     ? product.tags
+//         .map((item) => {
+//           if (
+//             typeof item ===
+//             "string"
+//           ) {
+//             return item;
+//           }
+
+//           return (
+//             item?.name ||
+//             item?.slug ||
+//             ""
+//           );
+//         })
+//         .filter(Boolean)
+//         .join(", ")
+//     : "";
+
 //   return (
 //     <main className="bg-white">
-// <div className="container-site pt-8 sm:pt-10 lg:pt-12">
+// {/* <div className="container-site pt-8 sm:pt-10 lg:pt-12"> */}
+// <div
+//   className="
+//     mx-auto
+//     w-full
+//     max-w-[1480px]
+//     px-4
+//     pt-8
+
+//     sm:px-6
+//     sm:pt-10
+
+//     lg:px-8
+//     lg:pt-12
+//   "
+// >
 
 //   <div className="flex flex-wrap items-center gap-1.5 text-sm">
 
@@ -1350,7 +1608,25 @@ export default function ProductDetails({
 //       ===================================== */}
 
 //       {/* <div className="container-site py-7 sm:py-10 lg:py-12"> */}
-//       <div className="container-site pb-10 pt-6 sm:pb-12 sm:pt-7 lg:pb-14 lg:pt-8">
+//       {/* <div className="container-site pb-10 pt-6 sm:pb-12 sm:pt-7 lg:pb-14 lg:pt-8"> */}
+//       <div
+//   className="
+//     mx-auto
+//     w-full
+//     max-w-[1480px]
+//     px-4
+//     pb-10
+//     pt-6
+
+//     sm:px-6
+//     sm:pb-12
+//     sm:pt-7
+
+//     lg:px-8
+//     lg:pb-14
+//     lg:pt-8
+//   "
+// >
 
 //         <Link
 //           to="/"
@@ -1433,9 +1709,22 @@ export default function ProductDetails({
 
 //           <div>
 
-//             {product.category && (
+//             {/* {product.category && (
 //               <p className="text-xs font-extrabold uppercase tracking-[.18em] text-[#D9A537]">
 //                 {product.category}
+//               </p>
+//             )} */}
+//             {categoryText && (
+//               <p
+//                 className="
+//                   text-xs
+//                   font-extrabold
+//                   uppercase
+//                   tracking-[.18em]
+//                   text-[#D9A537]
+//                 "
+//               >
+//                 {categoryText}
 //               </p>
 //             )}
 
@@ -1474,8 +1763,11 @@ export default function ProductDetails({
 
 //                 <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-7">
 
-//                   {product.sizes.map(
-//                     (size) => {
+//                   {/* {product.sizes.map(
+//                     (size) => { */}
+//                     {[...product.sizes]
+//                       .sort((a, b) => Number(a) - Number(b))
+//                       .map((size) => {
 //                       const variation =
 //                         product.variations?.find(
 //                           (
@@ -1673,6 +1965,38 @@ export default function ProductDetails({
 
 //                 </div>
 
+//                   {/* TAGS */}
+
+//                   {tagText && (
+//                     <div
+//                       className="
+//                         mt-2
+//                         flex
+//                         flex-wrap
+//                         items-start
+//                         gap-2
+//                         text-sm
+//                       "
+//                     >
+//                       <span
+//                         className="
+//                           font-extrabold
+//                           text-[#243346]
+//                         "
+//                       >
+//                         Tags:
+//                       </span>
+
+//                       <span
+//                         className="
+//                           text-slate-600
+//                         "
+//                       >
+//                         {tagText}
+//                       </span>
+//                     </div>
+//                   )}
+
 //                 <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
 
 //                   <span className="font-extrabold text-[#243346]">
@@ -1699,13 +2023,129 @@ export default function ProductDetails({
 //       </div>
 
 //       {/* =====================================
+//           ADDITIONAL INFORMATION
+//       ===================================== */}
+
+//       {product.sizes?.length > 0 && (
+//         <section className="bg-white pb-8 sm:pb-10">
+
+//           {/* <div className="container-site"> */}
+//           <div
+//   className="
+//     mx-auto
+//     w-full
+//     max-w-[1480px]
+//     px-4
+
+//     sm:px-6
+
+//     lg:px-8
+//   "
+// >
+
+//             {/* TITLE WITH LEFT + RIGHT LINES */}
+
+//             <div className="flex items-center gap-4">
+
+//               <div className="h-px flex-1 bg-slate-200" />
+
+//               <h2
+//                 className="
+//                   border-b-2
+//                   border-[#D9A537]
+//                   pb-2
+//                   text-center
+//                   text-base
+//                   font-black
+//                   text-[#D9A537]
+//                   sm:text-lg
+//                 "
+//               >
+//                 Additional Information
+//               </h2>
+
+//               <div className="h-px flex-1 bg-slate-200" />
+
+//             </div>
+
+//             {/* INFORMATION TABLE */}
+
+//             <div
+//               className="
+//                 mx-auto
+//                 mt-7
+//                 max-w-5xl
+//                 overflow-hidden
+//                 border
+//                 border-slate-200
+//                 bg-[#f3f3f3]
+//               "
+//             >
+
+//               <div className="grid grid-cols-[120px_1fr] sm:grid-cols-[170px_1fr]">
+
+//                 {/* LABEL */}
+
+//                 <div
+//                   className="
+//                     border-r
+//                     border-slate-200
+//                     px-5
+//                     py-4
+//                     text-base
+//                     font-black
+//                     text-[#243346]
+//                   "
+//                 >
+//                   size
+//                 </div>
+
+//                 {/* VALUES */}
+
+//                 <div
+//                   className="
+//                     px-5
+//                     py-4
+//                     text-base
+//                     leading-6
+//                     text-slate-600
+//                   "
+//                 >
+//                   {/* {product.sizes.join(", ")} */}
+//                   {[...product.sizes]
+//                     .sort((a, b) => Number(a) - Number(b))
+//                     .join(", ")}
+//                 </div>
+
+//               </div>
+
+//             </div>
+
+//           </div>
+
+//         </section>
+//       )}
+
+//       {/* =====================================
 //           RELATED PRODUCTS
 //       ===================================== */}
 
 //       {related.length > 0 && (
-//         <section className="bg-[#f7f8fa] py-12 sm:py-16">
+//         <section className="bg-white py-12 sm:py-16">
 
-//           <div className="container-site">
+//           {/* <div className="container-site"> */}
+//           <div
+//   className="
+//     mx-auto
+//     w-full
+//     max-w-[1480px]
+//     px-4
+
+//     sm:px-6
+
+//     lg:px-8
+//   "
+// >
 
 //             {/* CENTER HEADING */}
 
@@ -1769,3 +2209,6 @@ export default function ProductDetails({
 //     </main>
 //   );
 // }
+
+
+

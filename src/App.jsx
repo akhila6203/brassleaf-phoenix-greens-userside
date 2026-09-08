@@ -8,6 +8,9 @@ import Collections from "./pages/Collections";
 import UniformCollection from "./pages/UniformCollection";
 import ProductDetails from "./pages/ProductDetails";
 
+import CategoryProducts
+  from "./pages/CategoryProducts";
+
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import OrderSuccess from "./pages/OrderSuccess";
@@ -85,7 +88,12 @@ function AppShell() {
     />
   }
 />
-
+<Route
+  path="/category/:categorySlug"
+  element={
+    <CategoryProducts />
+  }
+/>
 <Route
   path="/collections"
   element={
