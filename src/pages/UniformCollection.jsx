@@ -528,7 +528,7 @@ export default function UniformCollection() {
           SCHOOL BANNER
       ============================================= */}
 
-      <section
+      {/* <section
         className="
           relative
           w-full
@@ -550,7 +550,7 @@ export default function UniformCollection() {
     lg:h-[390px]
   "
 />
-      </section>
+      </section> */}
 
       {/* =============================================
           CLASS HEADING
