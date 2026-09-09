@@ -95,14 +95,21 @@ export default function Cart() {
      TAX
   ========================================= */
 
+  // const cgst =
+  //   (Number(subtotal) * 2.5) /
+  //   105;
+
+  // const sgst =
+  //   (Number(subtotal) * 2.5) /
+  //   105;
+
   const cgst =
-    (Number(subtotal) * 2.5) /
-    105;
+  (Number(subtotal) * 9) /
+  118;
 
-  const sgst =
-    (Number(subtotal) * 2.5) /
-    105;
-
+const sgst =
+  (Number(subtotal) * 9) /
+  118;
   /* =========================================
      SAVE SHIPPING ADDRESS
   ========================================= */
@@ -987,7 +994,7 @@ export default function Cart() {
                         )}
                       </strong>{" "}
 
-                      2.5% CGST,
+                      9% CGST,
 
                       <br />
 
@@ -998,7 +1005,7 @@ export default function Cart() {
                         )}
                       </strong>{" "}
 
-                      2.5% SGST)
+                      9% CGST,
 
                     </p>
 

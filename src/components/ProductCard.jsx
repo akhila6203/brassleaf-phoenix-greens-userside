@@ -231,20 +231,72 @@ export default function ProductCard({
   /* =======================================================
      CATEGORY
   ======================================================= */
+const categoryLabel =
+  useMemo(() => {
+    const productName = String(
+      product?.name ||
+        detailProduct?.name ||
+        ""
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
 
-  const categoryLabel =
-    useMemo(
-      () =>
-        shortCategory(
-          detailProduct?.category ||
-            product.category ||
-            ""
-        ),
-      [
-        detailProduct?.category,
-        product.category,
-      ]
+    /* =========================================
+       BELT CARD ONLY
+    ========================================= */
+    if (
+      productName ===
+      "pg belt boys / girls"
+    ) {
+      return "Boys";
+    }
+
+    /* =========================================
+       SPORTS HOUSE T-SHIRTS - CARD ONLY
+    ========================================= */
+    const sportsOneToFiveProducts = [
+      "pg light red kakathiya",
+      "pg blue maurya",
+      "pg green pandiya",
+      "pg yellow chalukya",
+    ];
+
+    if (
+      sportsOneToFiveProducts.includes(
+        productName
+      )
+    ) {
+      return "Sports-1-5";
+    }
+
+    /* =========================================
+       ALL OTHER PRODUCTS - EXISTING LOGIC
+    ========================================= */
+    return shortCategory(
+      detailProduct?.category ||
+        product.category ||
+        ""
     );
+  }, [
+    product?.name,
+    detailProduct?.name,
+    detailProduct?.category,
+    product.category,
+  ]);
+  // const categoryLabel =
+  //   useMemo(
+  //     () =>
+  //       shortCategory(
+  //         detailProduct?.category ||
+  //           product.category ||
+  //           ""
+  //       ),
+  //     [
+  //       detailProduct?.category,
+  //       product.category,
+  //     ]
+  //   );
 
   /* =======================================================
      STOCK

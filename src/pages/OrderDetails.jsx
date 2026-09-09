@@ -225,8 +225,10 @@ export default function OrderDetails() {
                   {formatMoney(order?.total)}
                   {(cgst > 0 || sgst > 0) && (
                     <span className="mt-1 block text-xs font-normal text-slate-500">
-                      (includes {formatMoney(cgst)} 2.5% CGST,{" "}
-                      {formatMoney(sgst)} 2.5% SGST)
+                      {/* (includes {formatMoney(cgst)} 2.5% CGST,{" "}
+                      {formatMoney(sgst)} 2.5% SGST) */}
+                      (includes {formatMoney(cgst)} 9% CGST,{" "}
+{formatMoney(sgst)} 9% SGST)
                     </span>
                   )}
                 </td>

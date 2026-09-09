@@ -37,14 +37,14 @@ export default function Collections({ requireAuth }) {
     <main className="min-h-[70vh] bg-white">
       {/* PAGE TITLE */}
       <section className="container-site pt-10 sm:pt-14 lg:pt-16">
-        <h1 className="text-3xl font-black text-[#243346] sm:text-4xl">Uniforms</h1>
+        <h1 className="text-3xl font-black text-[#243346] sm:text-4xl">Shop</h1>
 
         <div className="mt-3 flex items-center gap-1 text-sm">
           <Link to="/" className="text-slate-400 transition hover:text-[#D9A537]">
             Home
           </Link>
           <ChevronRight size={14} className="text-slate-300" />
-          <span className="font-medium text-[#243346]">Uniforms</span>
+          <span className="font-medium text-[#243346]">Shop</span>
         </div>
       </section>
 

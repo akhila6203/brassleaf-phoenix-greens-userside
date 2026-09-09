@@ -198,9 +198,12 @@ export default function OrderDetailPanel({
               <td className="px-5 py-4 font-black text-[#243346]">
                 {formatMoney(order?.total)}
                 {(cgst > 0 || sgst > 0) && (
-                  <span className="mt-1 block text-xs font-normal text-slate-500">
-                    (includes {formatMoney(cgst)} 2.5% CGST, {formatMoney(sgst)}{" "}
-                    2.5% SGST)
+                   <span className="ml-2 text-xs font-normal text-slate-500">
+                   {/* <span className="mt-1 block text-xs font-normal text-slate-500"> */}
+                    {/* (includes {formatMoney(cgst)} 2.5% CGST, {formatMoney(sgst)}{" "}
+                    2.5% SGST) */}
+                    (includes {formatMoney(cgst)} 9% CGST, {formatMoney(sgst)}{" "}
+                    9% SGST)
                   </span>
                 )}
               </td>
@@ -236,7 +239,7 @@ export default function OrderDetailPanel({
         </table>
       </div>
 
-      <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-[#f4f4f4]">
+      {/* <div className="mt-8 overflow-hidden rounded-xl border border-slate-200 bg-[#f4f4f4]">
         <div className="border-b border-slate-200 px-5 py-4">
           <h3 className="text-lg font-black text-[#243346]">Billing Details</h3>
         </div>
@@ -265,7 +268,7 @@ export default function OrderDetailPanel({
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       <div className="mt-8">
         <h3 className="text-lg font-black text-[#243346]">Billing address</h3>

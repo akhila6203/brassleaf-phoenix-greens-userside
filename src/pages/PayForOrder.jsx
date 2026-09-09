@@ -116,8 +116,10 @@ function FullPaySummary({
               {formatMoney(order?.total)}
               {(cgst > 0 || sgst > 0) && (
                 <span className="mt-1 block text-xs font-normal text-slate-500">
-                  (includes {formatMoney(cgst)} 2.5% CGST, {formatMoney(sgst)}{" "}
-                  2.5% SGST)
+                  {/* (includes {formatMoney(cgst)} 2.5% CGST, {formatMoney(sgst)}{" "}
+                  2.5% SGST) */}
+                  (includes {formatMoney(cgst)} 9% CGST, {formatMoney(sgst)}{" "}
+                  9% SGST)
                 </span>
               )}
             </td>
@@ -333,12 +335,12 @@ export default function PayForOrder() {
 
   return (
     <>
-      <Breadcrumb
+      {/* <Breadcrumb
         items={[
           { label: "Checkout", to: "/checkout" },
           { label: "Pay for order" },
         ]}
-      />
+      /> */}
 
       <main className="container-site py-10 lg:py-14">
         <h1 className="text-3xl font-black text-[#243346] lg:text-4xl">Checkout</h1>

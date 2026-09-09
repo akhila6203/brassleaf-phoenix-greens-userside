@@ -1,7 +1,16 @@
 
 
 import { Link } from "react-router-dom";
-import { Facebook, Instagram, Mail, MapPin, Phone , Clock3} from "lucide-react";
+// import { Facebook, Instagram, Mail, MapPin, Phone , Clock3} from "lucide-react";
+import {
+  Facebook,
+  Instagram,
+  Youtube,
+  Mail,
+  MapPin,
+  Phone,
+  Clock3,
+} from "lucide-react";
 
 export default function Footer() {
   return (
@@ -112,16 +121,27 @@ export default function Footer() {
       {/* <div className="border-t border-white/10 py-5 text-center text-sm text-slate-400">
         © 2026 Brass Leaf Uniforms. All Rights Reserved.
       </div> */}
-      <div className="border-t border-white/10">
-  <div className="container-site flex flex-col gap-3 py-5 text-sm text-slate-300 md:flex-row md:items-center md:justify-between">
+     <div className="border-t border-white/10 bg-[#D2AF72]">
+  <div className="
+    container-site
+    flex
+    flex-col
+    gap-4
+    py-4
+    text-sm
+    text-white
+    md:flex-row
+    md:items-center
+    md:justify-between
+  ">
 
-    {/* Copyright */}
+    {/* COPYRIGHT */}
     <p className="text-center md:text-left">
-     Copyright © 2026 | Powered by
+      Copyright © 2026 | Powered by
     </p>
 
-    {/* Terms & Conditions */}
-    <p className="text-center md:text-right">
+    {/* TERMS & CONDITIONS */}
+    <p className="text-center">
       <span className="font-medium text-white">
         TERMS &amp; CONDITIONS:
       </span>{" "}
@@ -130,11 +150,86 @@ export default function Footer() {
         href="https://brassleaf.store"
         target="_blank"
         rel="noopener noreferrer"
-        className="font-medium text-[#D9A537] transition hover:text-white"
+        className="font-medium text-white transition hover:text-[#243346]"
       >
         https://brassleaf.store
       </a>
     </p>
+
+    {/* SOCIAL ICONS */}
+    <div className="flex items-center justify-center gap-2 md:justify-end">
+
+      {/* FACEBOOK */}
+      <a
+        href="https://www.facebook.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Facebook"
+        className="
+          flex
+          h-8
+          w-8
+          items-center
+          justify-center
+          rounded
+          bg-black
+          text-white
+          transition
+          hover:bg-[#243346]
+        "
+      >
+        <Facebook size={17} fill="currentColor" />
+      </a>
+
+      {/* YOUTUBE */}
+      <a
+        href="https://www.youtube.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="YouTube"
+        className="
+          flex
+          h-8
+          w-8
+          items-center
+          justify-center
+          rounded
+          bg-black
+          text-white
+          transition
+          hover:bg-[#243346]
+        "
+      >
+        {/* <Youtube size={17} fill="currentColor" /> */}
+        <Youtube
+  size={18}
+  strokeWidth={2.5}
+/>
+      </a>
+
+      {/* INSTAGRAM */}
+      <a
+        href="https://www.instagram.com/"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Instagram"
+        className="
+          flex
+          h-8
+          w-8
+          items-center
+          justify-center
+          rounded
+          bg-black
+          text-white
+          transition
+          hover:bg-[#243346]
+        "
+      >
+        <Instagram size={17} />
+      </a>
+
+    </div>
 
   </div>
 </div>
