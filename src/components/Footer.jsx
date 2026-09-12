@@ -18,8 +18,8 @@ export default function Footer() {
       <div className="container-site grid gap-10 py-14 md:grid-cols-2 lg:grid-cols-[1.15fr_.9fr_1fr]">
         <div>
           <img
-            // src="/logo.jpg"
-             src={$`{import.meta.env.BASE_URL}logo.jpg`}
+            src="/logo.jpg"
+            //  src={$`{import.meta.env.BASE_URL}logo.jpg`}
             alt="Brass Leaf Uniforms"
             className="mb-5 h-22 w-66 rounded-lg p-1"
           />

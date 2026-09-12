@@ -152,8 +152,8 @@ export default function Header({
               aria-label="Home"
             >
               <img
-                src={$`{import.meta.env.BASE_URL}logo.jpg`}
-                // src="/logo.jpg"
+                // src={$`{import.meta.env.BASE_URL}logo.jpg`}
+                src="/logo.jpg"
                 alt="School Uniforms"
                 className="
                   h-12
